@@ -28,10 +28,11 @@
 ### Option A — Docker (one command)
 
 ```bash
+echo "AUTH_SECRET=$(npx auth secret --raw 2>/dev/null || openssl rand -base64 32)" > .env
 docker compose up --build
 # → http://localhost:3000  (migrations + demo data run automatically)
 ```
-Postgres runs inside the compose network (no host port), so it won't clash with a local Postgres.
+`AUTH_SECRET` is required — compose reads it from `.env` (the one-liner above generates one). Postgres runs inside the compose network (no host port), so it won't clash with a local Postgres.
 
 ### Option B — Local
 

@@ -61,7 +61,11 @@ export async function maintenanceByMonth(months = 6) {
 export async function mostUsedAssets(limit = 5) {
   const [allocs, books] = await Promise.all([
     prisma.allocation.groupBy({ by: ["assetId"], _count: { _all: true } }),
-    prisma.booking.groupBy({ by: ["assetId"], _count: { _all: true } }),
+    prisma.booking.groupBy({
+      by: ["assetId"],
+      where: { status: { not: "CANCELLED" } },
+      _count: { _all: true },
+    }),
   ]);
   const score = new Map<string, number>();
   for (const a of allocs) score.set(a.assetId, (score.get(a.assetId) ?? 0) + a._count._all);
@@ -85,18 +89,25 @@ export async function mostUsedAssets(limit = 5) {
 export async function idleAssets(limit = 8, days = IDLE_DAYS) {
   const now = Date.now();
   const cutoff = now - days * DAY;
-  const [assets, allocMax, bookMax] = await Promise.all([
+  const [assets, allocMax, bookMax, activeAllocs] = await Promise.all([
     prisma.asset.findMany({
       where: { status: { notIn: ["RETIRED", "DISPOSED"] } },
       select: { id: true, tag: true, name: true, createdAt: true, acquisitionDate: true },
     }),
     prisma.allocation.groupBy({ by: ["assetId"], _max: { allocatedAt: true } }),
-    prisma.booking.groupBy({ by: ["assetId"], _max: { startTime: true } }),
+    prisma.booking.groupBy({
+      by: ["assetId"],
+      where: { status: { not: "CANCELLED" } },
+      _max: { startTime: true },
+    }),
+    prisma.allocation.findMany({ where: { status: "ACTIVE" }, select: { assetId: true } }),
   ]);
   const lastAlloc = new Map(allocMax.map((a) => [a.assetId, a._max.allocatedAt] as const));
   const lastBook = new Map(bookMax.map((b) => [b.assetId, b._max.startTime] as const));
+  const inUse = new Set(activeAllocs.map((a) => a.assetId));
 
   return assets
+    .filter((a) => !inUse.has(a.id)) // a currently-held asset is in use, not idle
     .map((a) => {
       const times = [lastAlloc.get(a.id), lastBook.get(a.id)].filter(Boolean) as Date[];
       const baseline = a.acquisitionDate ?? a.createdAt;

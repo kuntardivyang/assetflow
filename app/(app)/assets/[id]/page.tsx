@@ -8,6 +8,7 @@ import type { AssetStatus } from "@prisma/client";
 import { canChangeStatus } from "@/lib/services/assets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AssetQR } from "@/components/assets/AssetQR";
 import { ChangeStatus } from "./ChangeStatus";
 
 const MANUAL_TARGETS: AssetStatus[] = ["AVAILABLE", "RESERVED", "LOST", "RETIRED", "DISPOSED"];
@@ -80,14 +81,17 @@ export default async function AssetDetailPage(ctx: { params: Promise<{ id: strin
           <CardTitle className="text-base">Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
-            {facts.map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="font-medium">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+            <dl className="grid flex-1 grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+              {facts.map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="font-medium">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <AssetQR path={`/assets/${asset.id}`} tag={asset.tag} />
+          </div>
         </CardContent>
       </Card>
 

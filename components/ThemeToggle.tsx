@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 
+// Subscribe-to-nothing store: returns false on the server, true once mounted on
+// the client — avoids a hydration mismatch without a setState-in-effect.
+const emptySubscribe = () => () => {};
+
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Avoid a hydration mismatch — theme is only known on the client.
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   if (!mounted) return <div className="h-8 w-8" />;
 
   const isDark = resolvedTheme === "dark";

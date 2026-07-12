@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -53,19 +54,36 @@ const ICON: Record<NotifType, { icon: LucideIcon; tone: string }> = {
 export function NotificationsFeed({ items, logs }: { items: Item[]; logs: Log[] }) {
   const router = useRouter();
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("all");
+  const [busy, setBusy] = useState(false);
 
   const filtered = tab === "all" ? items : items.filter((i) => i.tab === tab);
   const unread = items.filter((i) => !i.read).length;
 
   async function markRead(id: string, link: string | null) {
-    await fetch(`/api/notifications/${id}`, { method: "PATCH" });
-    if (link) router.push(link);
-    else router.refresh();
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/notifications/${id}`, { method: "PATCH" });
+      if (!res.ok) throw new Error();
+      if (link) router.push(link);
+      else router.refresh();
+    } catch {
+      toast.error("Couldn't update that notification");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function markAllRead() {
-    await fetch("/api/notifications", { method: "PATCH" });
-    router.refresh();
+    setBusy(true);
+    try {
+      const res = await fetch("/api/notifications", { method: "PATCH" });
+      if (!res.ok) throw new Error();
+      router.refresh();
+    } catch {
+      toast.error("Couldn't mark all as read");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -93,7 +111,7 @@ export function NotificationsFeed({ items, logs }: { items: Item[]; logs: Log[] 
             })}
           </div>
           {unread > 0 && (
-            <Button size="sm" variant="ghost" onClick={markAllRead}>
+            <Button size="sm" variant="ghost" onClick={markAllRead} disabled={busy}>
               <CheckCheck className="h-4 w-4" /> Mark all read
             </Button>
           )}
@@ -114,8 +132,9 @@ export function NotificationsFeed({ items, logs }: { items: Item[]; logs: Log[] 
                     <li key={n.id}>
                       <button
                         onClick={() => markRead(n.id, n.link)}
+                        disabled={busy}
                         className={cn(
-                          "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted",
+                          "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted disabled:opacity-60",
                           !n.read && "bg-accent/40",
                         )}
                       >

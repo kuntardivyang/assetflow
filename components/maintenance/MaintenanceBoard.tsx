@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { MaintStatus, Priority } from "@prisma/client";
 
@@ -235,13 +236,8 @@ function RaiseDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-[var(--radius)] border border-border bg-card p-6 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="mb-4 text-lg font-semibold">Raise maintenance request</h2>
-        <form onSubmit={submit} className="space-y-4">
+    <Dialog open onClose={onClose} title="Raise maintenance request" className="max-w-md">
+      <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="asset">Asset</Label>
             <Select id="asset" value={assetId} onChange={(e) => setAssetId(e.target.value)} required>
@@ -269,8 +265,7 @@ function RaiseDialog({
             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={saving || !assetId}>{saving ? "Saving…" : "Raise request"}</Button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Dialog>
   );
 }

@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 import { TabStrip } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 import { DepartmentsTab, type Dept, type UserOption } from "./DepartmentsTab";
+import { CategoriesTab, type Category } from "./CategoriesTab";
+import { EmployeesTab, type Employee } from "./EmployeesTab";
 
 type Tab = "departments" | "categories" | "employees";
 
-export function OrgTabs({ departments, users }: { departments: Dept[]; users: UserOption[] }) {
+export function OrgTabs({
+  departments,
+  users,
+  categories,
+  employees,
+}: {
+  departments: Dept[];
+  users: UserOption[];
+  categories: Category[];
+  employees: Employee[];
+}) {
   const [tab, setTab] = useState<Tab>("departments");
 
   return (
@@ -22,18 +33,13 @@ export function OrgTabs({ departments, users }: { departments: Dept[]; users: Us
         onChange={setTab}
       />
       {tab === "departments" && <DepartmentsTab departments={departments} users={users} />}
-      {tab === "categories" && <ComingNext label="Categories" />}
-      {tab === "employees" && <ComingNext label="Employee directory & role assignment" />}
+      {tab === "categories" && <CategoriesTab categories={categories} />}
+      {tab === "employees" && (
+        <EmployeesTab
+          employees={employees}
+          departments={departments.map((d) => ({ id: d.id, name: d.name, active: d.active }))}
+        />
+      )}
     </div>
-  );
-}
-
-function ComingNext({ label }: { label: string }) {
-  return (
-    <Card>
-      <CardContent className="py-12 text-center text-sm text-muted-foreground">
-        {label} — coming soon.
-      </CardContent>
-    </Card>
   );
 }

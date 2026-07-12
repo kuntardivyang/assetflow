@@ -1,0 +1,34 @@
+# One-command demo: `docker compose up --build`
+# App on http://localhost:3000 (stop any local dev server first).
+# Postgres stays inside the compose network — no host port, so it won't
+# clash with a Postgres you already run locally.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: assetflow
+      POSTGRES_PASSWORD: assetflow
+      POSTGRES_DB: assetflow
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assetflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://assetflow:assetflow@db:5432/assetflow?schema=public
+      # Demo-only secret — generate your own with `npx auth secret` for anything real.
+      AUTH_SECRET: docker-demo-secret-change-me-000000000000000=
+      AUTH_TRUST_HOST: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dbdata:

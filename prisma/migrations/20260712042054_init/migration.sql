@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'ASSET_MANAGER', 'DEPARTMENT_HEAD', 'EMPLOYEE');
 
@@ -26,7 +29,7 @@ CREATE TYPE "AuditStatus" AS ENUM ('OPEN', 'CLOSED');
 CREATE TYPE "AuditResult" AS ENUM ('PENDING', 'VERIFIED', 'MISSING', 'DAMAGED');
 
 -- CreateEnum
-CREATE TYPE "NotifType" AS ENUM ('ASSET_ASSIGNED', 'MAINT_APPROVED', 'MAINT_REJECTED', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'BOOKING_REMINDER', 'TRANSFER_APPROVED', 'OVERDUE_RETURN', 'AUDIT_DISCREPANCY');
+CREATE TYPE "NotifType" AS ENUM ('ASSET_ASSIGNED', 'MAINT_APPROVED', 'MAINT_REJECTED', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'BOOKING_REMINDER', 'TRANSFER_APPROVED', 'TRANSFER_REJECTED', 'OVERDUE_RETURN', 'AUDIT_DISCREPANCY');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -192,6 +195,7 @@ CREATE TABLE "Notification" (
     "message" TEXT NOT NULL,
     "read" BOOLEAN NOT NULL DEFAULT false,
     "link" TEXT,
+    "dedupeKey" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
@@ -224,6 +228,9 @@ CREATE UNIQUE INDEX "Asset_tag_key" ON "Asset"("tag");
 
 -- CreateIndex
 CREATE INDEX "Booking_assetId_startTime_endTime_idx" ON "Booking"("assetId", "startTime", "endTime");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Notification_dedupeKey_key" ON "Notification"("dedupeKey");
 
 -- CreateIndex
 CREATE INDEX "Notification_userId_read_idx" ON "Notification"("userId", "read");
@@ -302,3 +309,12 @@ ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "ActivityLog" ADD CONSTRAINT "ActivityLog_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+-- ── Constraints Prisma can't express in schema ──────────────────────────────
+
+-- Double-allocation block at the data layer: at most one ACTIVE allocation per asset.
+CREATE UNIQUE INDEX "one_active_alloc" ON "Allocation"("assetId") WHERE "status" = 'ACTIVE';
+
+-- Race-free, delete-proof asset tags (AF-0001…). nextTag() uses nextval().
+CREATE SEQUENCE "asset_tag_seq" START 1;

@@ -67,29 +67,30 @@ async function main() {
 
   console.log("Seeding assets…");
   let n = 0;
+  const yearsAgo = (y: number) => new Date(Date.now() - Math.round(y * 365 * DAY));
   const mk = (data: Record<string, unknown>) =>
     prisma.asset.create({ data: { tag: tag(++n), ...data } as never });
 
-  const laptop = await mk({ name: "Dell Latitude 7440", categoryId: electronics.id, serialNumber: "DL7440-2231", acquisitionCost: 1250, location: "Bengaluru HQ", status: "ALLOCATED", currentHolderId: priya.id, currentDeptId: engineering.id, condition: "Good" });
-  const projector = await mk({ name: "Epson Projector", categoryId: electronics.id, serialNumber: "EP-0062", acquisitionCost: 700, location: "HQ Floor 2", status: "UNDER_MAINTENANCE" });
-  await mk({ name: "Office Chair", categoryId: furniture.id, acquisitionCost: 120, location: "Warehouse", status: "AVAILABLE" });
-  const monitor = await mk({ name: "LG UltraWide Monitor", categoryId: electronics.id, acquisitionCost: 400, location: "HQ Floor 1", status: "ALLOCATED", currentHolderId: arjun.id, currentDeptId: facilities.id });
-  await mk({ name: "Standing Desk", categoryId: furniture.id, acquisitionCost: 300, location: "HQ Floor 1", status: "AVAILABLE" });
-  const van = await mk({ name: "Delivery Van", categoryId: vehicles.id, serialNumber: "VAN-343", acquisitionCost: 22000, location: "Depot", status: "ALLOCATED", currentHolderId: arjun.id, currentDeptId: fieldOps.id });
-  await mk({ name: "Forklift", categoryId: equipment.id, acquisitionCost: 15000, location: "Warehouse", status: "AVAILABLE", condition: "Fair" });
-  await mk({ name: "Camera Kit", categoryId: electronics.id, acquisitionCost: 900, location: "Media Room", status: "AVAILABLE" });
-  await mk({ name: "Whiteboard", categoryId: furniture.id, acquisitionCost: 60, location: "HQ Floor 2", status: "AVAILABLE" });
-  await mk({ name: "Server Rack", categoryId: equipment.id, acquisitionCost: 5000, location: "Data Center", status: "RESERVED" });
-  await mk({ name: "iPad Pro", categoryId: electronics.id, acquisitionCost: 1100, location: "HQ Floor 1", status: "AVAILABLE" });
-  await mk({ name: "Printer", categoryId: electronics.id, acquisitionCost: 350, location: "HQ Floor 2", status: "AVAILABLE" });
-  await mk({ name: "Toolbox Set", categoryId: equipment.id, acquisitionCost: 200, location: "Depot", status: "AVAILABLE" });
-  await mk({ name: "Conference Phone", categoryId: electronics.id, acquisitionCost: 250, location: "Meeting Room A", status: "AVAILABLE" });
-  await mk({ name: "Retired Laptop", categoryId: electronics.id, acquisitionCost: 900, location: "Storage", status: "RETIRED" });
+  const laptop = await mk({ name: "Dell Latitude 7440", categoryId: electronics.id, serialNumber: "DL7440-2231", acquisitionCost: 1250, acquisitionDate: yearsAgo(1.5), location: "Bengaluru HQ", status: "ALLOCATED", currentHolderId: priya.id, currentDeptId: engineering.id, condition: "Good" });
+  const projector = await mk({ name: "Epson Projector", categoryId: electronics.id, serialNumber: "EP-0062", acquisitionCost: 700, acquisitionDate: yearsAgo(3), location: "HQ Floor 2", status: "UNDER_MAINTENANCE" });
+  await mk({ name: "Office Chair", categoryId: furniture.id, acquisitionCost: 120, acquisitionDate: yearsAgo(2), location: "Warehouse", status: "AVAILABLE" });
+  const monitor = await mk({ name: "LG UltraWide Monitor", categoryId: electronics.id, acquisitionCost: 400, acquisitionDate: yearsAgo(0.8), location: "HQ Floor 1", status: "ALLOCATED", currentHolderId: arjun.id, currentDeptId: facilities.id });
+  await mk({ name: "Standing Desk", categoryId: furniture.id, acquisitionCost: 300, acquisitionDate: yearsAgo(1), location: "HQ Floor 1", status: "AVAILABLE" });
+  const van = await mk({ name: "Delivery Van", categoryId: vehicles.id, serialNumber: "VAN-343", acquisitionCost: 22000, acquisitionDate: yearsAgo(4.5), location: "Depot", status: "ALLOCATED", currentHolderId: arjun.id, currentDeptId: fieldOps.id });
+  await mk({ name: "Forklift", categoryId: equipment.id, acquisitionCost: 15000, acquisitionDate: yearsAgo(5), location: "Warehouse", status: "AVAILABLE", condition: "Fair" });
+  await mk({ name: "Camera Kit", categoryId: electronics.id, acquisitionCost: 900, acquisitionDate: yearsAgo(2.5), location: "Media Room", status: "AVAILABLE" });
+  await mk({ name: "Whiteboard", categoryId: furniture.id, acquisitionCost: 60, acquisitionDate: yearsAgo(0.5), location: "HQ Floor 2", status: "AVAILABLE" });
+  await mk({ name: "Server Rack", categoryId: equipment.id, acquisitionCost: 5000, acquisitionDate: yearsAgo(3.5), location: "Data Center", status: "RESERVED" });
+  await mk({ name: "iPad Pro", categoryId: electronics.id, acquisitionCost: 1100, acquisitionDate: yearsAgo(1.2), location: "HQ Floor 1", status: "AVAILABLE" });
+  await mk({ name: "Printer", categoryId: electronics.id, acquisitionCost: 350, acquisitionDate: yearsAgo(4), location: "HQ Floor 2", status: "AVAILABLE" });
+  await mk({ name: "Toolbox Set", categoryId: equipment.id, acquisitionCost: 200, acquisitionDate: yearsAgo(2), location: "Depot", status: "AVAILABLE" });
+  await mk({ name: "Conference Phone", categoryId: electronics.id, acquisitionCost: 250, acquisitionDate: yearsAgo(1), location: "Meeting Room A", status: "AVAILABLE" });
+  await mk({ name: "Retired Laptop", categoryId: electronics.id, acquisitionCost: 900, acquisitionDate: yearsAgo(6), location: "Storage", status: "RETIRED" });
 
-  // Bookable shared resources (rooms).
-  const roomB2 = await mk({ name: "Conference Room B2", categoryId: furniture.id, location: "HQ Floor 2", status: "AVAILABLE", bookable: true });
-  const roomA1 = await mk({ name: "Meeting Room A1", categoryId: furniture.id, location: "HQ Floor 1", status: "AVAILABLE", bookable: true });
-  await mk({ name: "Training Room", categoryId: furniture.id, location: "HQ Floor 3", status: "AVAILABLE", bookable: true });
+  // Bookable shared resources (rooms) — booking-only, never allocated.
+  const roomB2 = await mk({ name: "Conference Room B2", categoryId: furniture.id, acquisitionDate: yearsAgo(2), location: "HQ Floor 2", status: "AVAILABLE", bookable: true });
+  const roomA1 = await mk({ name: "Meeting Room A1", categoryId: furniture.id, acquisitionDate: yearsAgo(2), location: "HQ Floor 1", status: "AVAILABLE", bookable: true });
+  await mk({ name: "Training Room", categoryId: furniture.id, acquisitionDate: yearsAgo(2), location: "HQ Floor 3", status: "AVAILABLE", bookable: true });
 
   console.log("Seeding allocations…");
   await prisma.allocation.create({
@@ -148,8 +149,8 @@ async function main() {
   await prisma.notification.createMany({
     data: [
       { userId: priya.id, type: "ASSET_ASSIGNED", message: "Laptop AF-0001 assigned to you", link: "/allocation" },
-      { userId: manager.id, type: "OVERDUE_RETURN", message: "Delivery Van AF-0006 is overdue for return", link: "/allocation" },
-      { userId: priya.id, type: "BOOKING_CONFIRMED", message: "Conference Room B2 booked 9:00–10:00", link: "/booking" },
+      { userId: manager.id, type: "OVERDUE_RETURN", message: "Delivery Van AF-0006 is overdue for return", link: "/allocation", dedupeKey: "OVERDUE_RETURN:seed-van" },
+      { userId: priya.id, type: "BOOKING_CONFIRMED", message: "Conference Room B2 booked 9:00-10:00", link: "/booking" },
     ],
   });
   await prisma.activityLog.createMany({
@@ -159,6 +160,10 @@ async function main() {
       { actorId: manager.id, action: "maintenance", entityType: "Asset", entityId: projector.id, description: "Projector AF-0002 maintenance approved" },
     ],
   });
+
+  // Advance the tag sequence past the seeded assets so the next real
+  // registration continues the AF-#### series (review B2).
+  await prisma.$executeRawUnsafe(`SELECT setval('asset_tag_seq', ${n})`);
 
   console.log(`Done. Seeded ${n} assets, 5 users, 3 departments, 1 audit cycle.`);
   console.log("Cycle:", cycle.name);

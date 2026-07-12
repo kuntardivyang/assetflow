@@ -7,6 +7,9 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: assetflow
+      # Local-only demo password — safe because the DB port below is NOT
+      # published to the host, so the database is only reachable inside the
+      # compose network by the app service.
       POSTGRES_PASSWORD: assetflow
       POSTGRES_DB: assetflow
     volumes:
@@ -21,8 +24,9 @@ services:
     build: .
     environment:
       DATABASE_URL: postgresql://assetflow:assetflow@db:5432/assetflow?schema=public
-      # Demo-only secret — generate your own with `npx auth secret` for anything real.
-      AUTH_SECRET: docker-demo-secret-change-me-000000000000000=
+      # Required from the environment — never commit a signing key. Generate one
+      # with `npx auth secret` and put it in .env (compose reads it automatically).
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env — generate with: npx auth secret}
       AUTH_TRUST_HOST: "true"
     ports:
       - "3000:3000"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +65,9 @@ export default function LoginPage() {
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => alert("Password reset is not part of this demo.")}
+                onClick={() =>
+                  toast.info("Password reset isn't part of this demo.")
+                }
               >
                 Forgot password
               </button>

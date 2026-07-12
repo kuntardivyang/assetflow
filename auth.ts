@@ -60,11 +60,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
+      // First call (sign-in): copy identity from the authorized user.
       if (user) {
         token.id = user.id as string;
         token.role = user.role;
         token.departmentId = user.departmentId;
+        return token;
+      }
+      // Subsequent requests: re-read the user so role/department changes and
+      // deactivations in Org Setup take effect immediately, not after the JWT
+      // expires (~30 days). Returning null forces a sign-out.
+      if (token.id) {
+        const fresh = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { active: true, role: true, departmentId: true },
+        });
+        if (!fresh || !fresh.active) return null;
+        token.role = fresh.role;
+        token.departmentId = fresh.departmentId;
       }
       return token;
     },

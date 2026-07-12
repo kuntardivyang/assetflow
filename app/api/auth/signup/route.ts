@@ -28,6 +28,10 @@ export async function POST(req: Request) {
   // email is already trimmed + lowercased by the schema.
   const { name, email, password } = parsed.data;
 
+  // Hash unconditionally (~250ms) BEFORE the existence check so an existing
+  // email doesn't return measurably faster — closes the timing side channel.
+  const passwordHash = await hashPassword(password);
+
   // Enumeration-safe: never reveal whether the email already exists. Create the
   // account only when it's new; either way return the same generic response.
   const existing = await prisma.user.findUnique({
@@ -35,7 +39,6 @@ export async function POST(req: Request) {
     select: { id: true },
   });
   if (!existing) {
-    const passwordHash = await hashPassword(password);
     await prisma.user.create({
       data: { name, email, passwordHash, role: "EMPLOYEE" },
     });

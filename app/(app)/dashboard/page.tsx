@@ -10,6 +10,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
+import { can } from "@/lib/rbac";
 import { KpiCard } from "@/components/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,9 @@ import { formatDistanceToNow } from "date-fns";
 // Screen 2 — real-time operational snapshot for every role.
 export default async function DashboardPage() {
   const now = new Date();
+  const session = await auth();
+  // Only Admin/Asset Manager see the org-wide feed; everyone else sees their own.
+  const seesAllActivity = can(session?.user.role, "analytics:viewAll");
 
   const [
     available,
@@ -47,6 +52,7 @@ export default async function DashboardPage() {
       where: { status: "ACTIVE", expectedReturnDate: { lt: now } },
     }),
     prisma.activityLog.findMany({
+      where: seesAllActivity ? {} : { actorId: session!.user.id },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { actor: { select: { name: true } } },

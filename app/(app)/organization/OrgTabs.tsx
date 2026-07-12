@@ -32,7 +32,7 @@ function ComingNext({ label }: { label: string }) {
   return (
     <Card>
       <CardContent className="py-12 text-center text-sm text-muted-foreground">
-        {label} — landing in the next commit.
+        {label} — coming soon.
       </CardContent>
     </Card>
   );

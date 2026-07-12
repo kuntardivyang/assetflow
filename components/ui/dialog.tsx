@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
 /**
- * Lightweight modal in the app's token style (no external deps).
- * Controlled: parent owns `open`. Overlay click and ✕ both close.
+ * Lightweight modal, no dialog library. Controlled: parent owns `open`.
+ * Overlay click, Escape and ✕ all call `onClose` — gate it in the parent if a
+ * save is in flight. No focus trap — add one before reusing for anything
+ * keyboard-heavy.
  */
 export function Dialog({
   open,
@@ -20,6 +23,15 @@ export function Dialog({
   children: React.ReactNode;
   className?: string;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div

@@ -15,8 +15,10 @@ const createSchema = z.object({
   parentId: z.string().nullable().optional(),
 });
 
-// GET /api/departments — picklist for any signed-in user (S4/S5 dropdowns
-// show active only, review D9); ?all=1 returns inactive too for the admin table.
+// GET /api/departments — picklist for any signed-in user; defaults to
+// active-only (S4/S5 dropdowns, review D9). ?all=1 includes inactive but only
+// for ADMIN (silently ignored otherwise). Note: the org-setup table does NOT
+// use this route — it reads Prisma directly in page.tsx.
 export async function GET(req: Request) {
   try {
     const session = await requireSession();
@@ -28,7 +30,7 @@ export async function GET(req: Request) {
     });
     return NextResponse.json(departments);
   } catch (e) {
-    return apiError(e);
+    return apiError(e, "GET /api/departments");
   }
 }
 
@@ -45,8 +47,8 @@ export async function POST(req: Request) {
     }
 
     const { name, code, headId, parentId } = parsed.data;
-    // Department.name has no unique constraint in the schema — enforce here
-    // so the demo can't show two "Engineering" rows.
+    // Department.name has no unique constraint in the schema — best-effort
+    // check here (not race-safe) so the demo can't show two "Engineering" rows.
     const dupe = await prisma.department.findFirst({
       where: { name: { equals: name, mode: "insensitive" } },
     });
@@ -58,21 +60,29 @@ export async function POST(req: Request) {
       const dept = await prisma.department.create({
         data: { name, code, headId: headId || null, parentId: parentId || null },
       });
+      // The mutation already succeeded — a logging failure must not turn it
+      // into a reported 500 (it would read as data corruption on retry).
       await logActivity({
         actorId: session.user.id,
         action: "department.create",
         entityType: "Department",
         entityId: dept.id,
         description: `Created department ${dept.name} (${dept.code})`,
-      });
+      }).catch((err) => console.error("[POST /api/departments] activity log failed", err));
       return NextResponse.json(dept, { status: 201 });
     } catch (e: unknown) {
       if (typeof e === "object" && e !== null && "code" in e && e.code === "P2002") {
         return NextResponse.json({ error: "This department code is already in use" }, { status: 409 });
       }
+      if (typeof e === "object" && e !== null && "code" in e && e.code === "P2003") {
+        return NextResponse.json(
+          { error: "Selected head or parent department no longer exists — refresh and try again" },
+          { status: 400 },
+        );
+      }
       throw e;
     }
   } catch (e) {
-    return apiError(e);
+    return apiError(e, "POST /api/departments");
   }
 }

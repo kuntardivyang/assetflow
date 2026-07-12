@@ -4,8 +4,9 @@ import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { OrgTabs } from "./OrgTabs";
 
-// Screen 3 — Organization Setup. Admin-only: guarded here server-side AND in
-// every API route (RBAC gates actions, not just menus — spec requirement).
+// Screen 3 — Organization Setup. The page is Admin-only, and every MUTATING
+// org route re-checks org:manage server-side (RBAC gates actions, not just
+// menus). GET /api/departments stays open to all signed-in users for picklists.
 export default async function OrganizationPage() {
   const session = await auth();
   if (!can(session?.user?.role, "org:manage")) redirect("/dashboard");

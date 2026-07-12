@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,7 @@ export function CategoriesTab({ categories }: { categories: Category[] }) {
     const data = await res.json().catch(() => null);
     if (!res.ok) return setError(data?.error ?? `Request failed (${res.status})`);
     if (!data?.id) return setError("Unexpected response — are you still signed in?");
+    toast.success(editing ? "Category updated" : "Category created");
     setOpen(false);
     router.refresh();
   }

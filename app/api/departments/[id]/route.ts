@@ -31,21 +31,21 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         { status: 400 },
       );
     }
-    // walk up the parent chain so re-parenting can't create a cycle
+    // walk up the parent chain so re-parenting can't create a cycle.
+    // Load the whole (small) table once and walk in memory instead of one
+    // query per level.
     if (parsed.data.parentId) {
-      let cursor: string | null = parsed.data.parentId;
-      for (let depth = 0; cursor && depth < 20; depth++) {
+      const all = await prisma.department.findMany({ select: { id: true, parentId: true } });
+      const parentOf = new Map(all.map((d) => [d.id, d.parentId]));
+      let cursor: string | null | undefined = parsed.data.parentId;
+      for (let depth = 0; cursor && depth <= all.length; depth++) {
         if (cursor === id) {
           return NextResponse.json(
             { error: "That parent would create a cycle in the department hierarchy" },
             { status: 400 },
           );
         }
-        const parent: { parentId: string | null } | null = await prisma.department.findUnique({
-          where: { id: cursor },
-          select: { parentId: true },
-        });
-        cursor = parent?.parentId ?? null;
+        cursor = parentOf.get(cursor);
       }
     }
 

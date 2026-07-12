@@ -4,17 +4,8 @@ import { prisma } from "@/lib/db";
 import type { Prisma, AssetStatus } from "@prisma/client";
 import { requireAction, requireSession, apiError } from "@/lib/api";
 import { nextTag } from "@/lib/services/assets";
+import { ASSET_STATUSES } from "@/lib/statuses";
 import { logActivity } from "@/lib/services/notifications";
-
-const ASSET_STATUSES = [
-  "AVAILABLE",
-  "ALLOCATED",
-  "RESERVED",
-  "UNDER_MAINTENANCE",
-  "LOST",
-  "RETIRED",
-  "DISPOSED",
-] as const;
 
 const createSchema = z.object({
   name: z.string().min(2, "Name is too short"),

@@ -8,12 +8,15 @@ export async function GET(req: Request) {
   try {
     const session = await requireSession();
     const all = new URL(req.url).searchParams.get("all") === "1";
+    // Only managers see emails — a plain employee shouldn't be able to harvest
+    // the whole staff directory's addresses from a picklist endpoint.
+    const privileged = ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD"].includes(session.user.role);
     const employees = await prisma.user.findMany({
       where: all && session.user.role === "ADMIN" ? {} : { active: true },
       select: {
         id: true,
         name: true,
-        email: true,
+        email: privileged,
         role: true,
         active: true,
         department: { select: { id: true, name: true } },

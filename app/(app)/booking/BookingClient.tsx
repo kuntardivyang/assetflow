@@ -26,7 +26,17 @@ type MyBooking = {
   status: string;
 };
 
-const HOURS = Array.from({ length: 11 }, (_, i) => 8 + i); // 8:00 – 18:00
+// Default working hours, widened to cover any booking that falls outside them
+// so an early/late slot never renders as an empty (falsely free) row.
+function gridHours(bookings: { startTime: string; endTime: string }[]) {
+  let lo = 8;
+  let hi = 18;
+  for (const b of bookings) {
+    lo = Math.min(lo, new Date(b.startTime).getHours());
+    hi = Math.max(hi, new Date(b.endTime).getHours() + (new Date(b.endTime).getMinutes() > 0 ? 1 : 0));
+  }
+  return Array.from({ length: hi - lo }, (_, i) => lo + i);
+}
 
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -153,6 +163,7 @@ export function BookingClient({
   }
 
   const selected = resources.find((r) => r.id === resourceId);
+  const hours = gridHours(dayBookings);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -194,7 +205,7 @@ export function BookingClient({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-0">
-            {HOURS.map((h) => {
+            {hours.map((h) => {
               const rowStart = new Date(`${date}T${String(h).padStart(2, "0")}:00:00`);
               const rowEnd = new Date(rowStart.getTime() + 60 * 60 * 1000);
               const starting = dayBookings.filter(

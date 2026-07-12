@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ export function DepartmentsTab({ departments, users }: { departments: Dept[]; us
     // A 2xx without the entity means we were redirected (e.g. expired session)
     // — don't report a save that never happened.
     if (!data?.id) return setError("Unexpected response — are you still signed in?");
+    toast.success(editing ? "Department updated" : "Department created");
     setOpen(false);
     router.refresh();
   }
@@ -95,6 +97,7 @@ export function DepartmentsTab({ departments, users }: { departments: Dept[]; us
       );
       return; // don't refresh into stale state on failure
     }
+    toast.success(d.active ? "Department deactivated" : "Department activated");
     router.refresh();
   }
 

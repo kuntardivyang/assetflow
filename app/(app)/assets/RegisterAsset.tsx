@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,7 @@ export function RegisterAsset({ categories }: { categories: { id: string; name: 
     const data = await res.json().catch(() => null);
     if (!res.ok) return setError(data?.error ?? `Request failed (${res.status})`);
     if (!data?.id) return setError("Unexpected response — are you still signed in?");
+    toast.success(`Registered ${data.tag}`);
     setOpen(false);
     setForm(EMPTY);
     router.refresh();

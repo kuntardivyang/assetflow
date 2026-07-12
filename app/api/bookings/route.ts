@@ -20,6 +20,9 @@ const createSchema = z
   })
   .refine((d) => new Date(d.endTime) > new Date(d.startTime), {
     error: "End time must be after start time",
+  })
+  .refine((d) => new Date(d.startTime).getTime() > Date.now() - 60_000, {
+    error: "Can't book a slot in the past",
   });
 
 // GET /api/bookings?assetId=...&date=YYYY-MM-DD — one resource's bookings for

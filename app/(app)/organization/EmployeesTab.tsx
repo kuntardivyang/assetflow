@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Pencil } from "lucide-react";
+import { ROLE_LABELS } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -24,13 +26,6 @@ const ROLE_OPTIONS = [
   { value: "DEPARTMENT_HEAD", label: "Department Head" },
   { value: "ASSET_MANAGER", label: "Asset Manager" },
 ];
-
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: "Admin",
-  ASSET_MANAGER: "Asset Manager",
-  DEPARTMENT_HEAD: "Department Head",
-  EMPLOYEE: "Employee",
-};
 
 export function EmployeesTab({
   employees,
@@ -78,6 +73,7 @@ export function EmployeesTab({
     const data = await res.json().catch(() => null);
     if (!res.ok) return setError(data?.error ?? `Request failed (${res.status})`);
     if (!data?.id) return setError("Unexpected response — are you still signed in?");
+    toast.success(`${data.name ?? "Employee"} updated`);
     setEditing(null);
     router.refresh();
   }
@@ -106,7 +102,7 @@ export function EmployeesTab({
               <TD className="font-medium">{u.name ?? "--"}</TD>
               <TD className="text-muted-foreground">{u.email}</TD>
               <TD>{u.department?.name ?? "--"}</TD>
-              <TD>{ROLE_LABEL[u.role] ?? u.role}</TD>
+              <TD>{ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] ?? u.role}</TD>
               <TD>
                 <StatusBadge status={u.active ? "ACTIVE" : "INACTIVE"} />
               </TD>

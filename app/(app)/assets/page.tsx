@@ -5,18 +5,9 @@ import { prisma } from "@/lib/db";
 import type { Prisma, AssetStatus } from "@prisma/client";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ASSET_STATUSES } from "@/lib/statuses";
 import { FilterBar } from "./FilterBar";
 import { RegisterAsset } from "./RegisterAsset";
-
-const ASSET_STATUSES: AssetStatus[] = [
-  "AVAILABLE",
-  "ALLOCATED",
-  "RESERVED",
-  "UNDER_MAINTENANCE",
-  "LOST",
-  "RETIRED",
-  "DISPOSED",
-];
 
 // Screen 4 — asset registry. All filtering happens in the DB query.
 // repeated query keys come through as arrays — take the first

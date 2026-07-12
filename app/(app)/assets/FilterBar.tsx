@@ -4,16 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-
-const STATUSES = [
-  "AVAILABLE",
-  "ALLOCATED",
-  "RESERVED",
-  "UNDER_MAINTENANCE",
-  "LOST",
-  "RETIRED",
-  "DISPOSED",
-];
+import { ASSET_STATUSES, humanizeStatus } from "@/lib/statuses";
 
 export function FilterBar({
   categories,
@@ -72,9 +63,9 @@ export function FilterBar({
         onChange={(e) => setParam("status", e.target.value)}
       >
         <option value="">Status</option>
-        {STATUSES.map((s) => (
+        {ASSET_STATUSES.map((s) => (
           <option key={s} value={s}>
-            {s.replaceAll("_", " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
+            {humanizeStatus(s)}
           </option>
         ))}
       </Select>

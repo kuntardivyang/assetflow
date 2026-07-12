@@ -93,8 +93,12 @@ export function AllocationClient({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });
+    }).catch(() => null);
     setLoading(false);
+    if (!res) {
+      setError("Network error — please check your connection and try again.");
+      return;
+    }
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong.");

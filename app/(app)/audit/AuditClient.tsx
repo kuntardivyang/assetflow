@@ -84,8 +84,12 @@ export function AuditClient({
       method,
       headers: { "Content-Type": "application/json" },
       body: payload ? JSON.stringify(payload) : undefined,
-    });
+    }).catch(() => null);
     setLoading(false);
+    if (!res) {
+      setError("Network error — please check your connection and try again.");
+      return false;
+    }
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong.");

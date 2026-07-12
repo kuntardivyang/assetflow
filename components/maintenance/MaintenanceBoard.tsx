@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Plus, Check, X, Play, Wrench, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,9 +64,10 @@ export function MaintenanceBoard({
     setBusy(null);
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
-      alert(e.error ?? "Could not move card");
+      toast.error(e.error ?? "Could not move card");
       return;
     }
+    toast.success(`Moved to ${to.replaceAll("_", " ").toLowerCase()}`);
     router.refresh();
   }
 
@@ -228,6 +230,7 @@ function RaiseDialog({
       setError(err.error ?? "Could not raise request");
       return;
     }
+    toast.success("Maintenance request raised");
     onDone();
   }
 

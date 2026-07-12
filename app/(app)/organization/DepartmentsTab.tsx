@@ -32,6 +32,12 @@ export function DepartmentsTab({ departments, users }: { departments: Dept[]; us
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState("");
+
+  // Keep the dialog up while a save is in flight so its error stays visible.
+  function closeDialog() {
+    if (!pending) setOpen(false);
+  }
 
   function openCreate() {
     setEditing(null);
@@ -64,22 +70,31 @@ export function DepartmentsTab({ departments, users }: { departments: Dept[]; us
     }).catch(() => null);
     setPending(false);
     if (!res) return setError("Network error — try again");
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      return setError(data?.error ?? "Something went wrong");
-    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) return setError(data?.error ?? `Request failed (${res.status})`);
+    // A 2xx without the entity means we were redirected (e.g. expired session)
+    // — don't report a save that never happened.
+    if (!data?.id) return setError("Unexpected response — are you still signed in?");
     setOpen(false);
     router.refresh();
   }
 
   async function toggleActive(d: Dept) {
     setTogglingId(d.id);
-    await fetch(`/api/departments/${d.id}`, {
+    setToggleError("");
+    const res = await fetch(`/api/departments/${d.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !d.active }),
     }).catch(() => null);
     setTogglingId(null);
+    if (!res || !res.ok) {
+      const data = res ? await res.json().catch(() => null) : null;
+      setToggleError(
+        data?.error ?? (res ? `Request failed (${res.status})` : "Network error — try again"),
+      );
+      return; // don't refresh into stale state on failure
+    }
     router.refresh();
   }
 
@@ -93,6 +108,8 @@ export function DepartmentsTab({ departments, users }: { departments: Dept[]; us
           <Plus className="h-4 w-4" /> Add Department
         </Button>
       </div>
+
+      {toggleError && <p className="text-sm text-danger">{toggleError}</p>}
 
       <Table>
         <THead>
@@ -144,7 +161,7 @@ export function DepartmentsTab({ departments, users }: { departments: Dept[]; us
 
       <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeDialog}
         title={editing ? `Edit ${editing.name}` : "Add Department"}
       >
         <form onSubmit={submit} className="space-y-4">
@@ -202,7 +219,7 @@ export function DepartmentsTab({ departments, users }: { departments: Dept[]; us
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" disabled={pending} onClick={closeDialog}>
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>

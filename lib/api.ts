@@ -29,13 +29,13 @@ export async function requireSession(): Promise<Session> {
   return session;
 }
 
-export function apiError(e: unknown) {
+export function apiError(e: unknown, context?: string) {
   if (e instanceof UnauthenticatedError) {
     return NextResponse.json({ error: e.message }, { status: 401 });
   }
   if (e instanceof PermissionError) {
     return NextResponse.json({ error: e.message }, { status: 403 });
   }
-  console.error(e);
+  console.error(context ? `[${context}]` : "[api]", e);
   return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
 }

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { deriveBookingStatus, generateReminders } from "@/lib/services/booking";
@@ -12,8 +13,9 @@ export default async function BookingPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [session, spRaw] = await Promise.all([auth(), searchParams]);
-  const userId = session!.user.id;
-  const role = session!.user.role;
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
+  const role = session.user.role;
 
   const resources = await prisma.asset.findMany({
     where: { bookable: true },
@@ -22,7 +24,10 @@ export default async function BookingPage({
   });
 
   const resourceId = first(spRaw.resourceId) ?? resources[0]?.id ?? null;
-  const dateStr = first(spRaw.date) ?? new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA"); // local yyyy-mm-dd
+  const rawDate = first(spRaw.date);
+  const dateStr =
+    rawDate && !Number.isNaN(Date.parse(`${rawDate}T00:00:00`)) ? rawDate : today;
   const dayStart = new Date(`${dateStr}T00:00:00`);
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 

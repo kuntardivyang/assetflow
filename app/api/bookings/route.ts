@@ -74,6 +74,15 @@ export async function POST(req: Request) {
     // only dept heads / admins can book on behalf of a department
     const deptId =
       d.deptId && ["DEPARTMENT_HEAD", "ADMIN"].includes(session.user.role) ? d.deptId : null;
+    if (deptId) {
+      const dept = await prisma.department.findFirst({ where: { id: deptId, active: true } });
+      if (!dept) {
+        return NextResponse.json(
+          { error: "Selected department no longer exists — refresh and try again" },
+          { status: 400 },
+        );
+      }
+    }
 
     try {
       const booking = await createBooking({

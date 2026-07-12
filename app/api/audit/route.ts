@@ -4,14 +4,19 @@ import { auth } from "@/auth";
 import { assertCan, PermissionError } from "@/lib/rbac";
 import { createCycle, AuditError } from "@/lib/services/audit";
 
-const schema = z.object({
-  name: z.string().min(2, "Name the audit cycle"),
-  scopeDeptId: z.string().min(1).optional(),
-  scopeLocation: z.string().min(1).optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
-  auditorIds: z.array(z.string().min(1)).min(1, "Assign at least one auditor"),
-});
+const schema = z
+  .object({
+    name: z.string().min(2, "Name the audit cycle"),
+    scopeDeptId: z.string().min(1).optional(),
+    scopeLocation: z.string().min(1).optional(),
+    startDate: z.coerce.date({ error: "Invalid start date" }),
+    endDate: z.coerce.date({ error: "Invalid end date" }),
+    auditorIds: z.array(z.string().min(1)).min(1, "Assign at least one auditor"),
+  })
+  .refine((d) => d.endDate >= d.startDate, {
+    error: "End date must be on or after the start date",
+    path: ["endDate"],
+  });
 
 // POST /api/audit — create an audit cycle and snapshot its checklist.
 export async function POST(req: Request) {
@@ -33,14 +38,7 @@ export async function POST(req: Request) {
     assertCan(session.user.role, "audit:manage");
     const { name, scopeDeptId, scopeLocation, startDate, endDate, auditorIds } = parsed.data;
     const cycle = await createCycle(
-      {
-        name,
-        scopeDeptId,
-        scopeLocation,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        auditorIds,
-      },
+      { name, scopeDeptId, scopeLocation, startDate, endDate, auditorIds },
       session.user.id,
     );
     return NextResponse.json(cycle, { status: 201 });

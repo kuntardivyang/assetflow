@@ -11,7 +11,7 @@ export default async function OrganizationPage() {
   const session = await auth();
   if (!can(session?.user?.role, "org:manage")) redirect("/dashboard");
 
-  const [departments, users] = await Promise.all([
+  const [departments, employees, categories] = await Promise.all([
     prisma.department.findMany({
       select: {
         id: true,
@@ -23,12 +23,26 @@ export default async function OrganizationPage() {
       },
       orderBy: { name: "asc" },
     }),
+    // Full directory (incl. inactive) for the Employees tab; the head picker
+    // below filters to active accounts.
     prisma.user.findMany({
-      where: { active: true },
-      select: { id: true, name: true, email: true, role: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        department: { select: { id: true, name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.category.findMany({
+      select: { id: true, name: true, extraFields: true },
       orderBy: { name: "asc" },
     }),
   ]);
+
+  const activeUsers = employees.filter((u) => u.active);
 
   return (
     <div className="space-y-6">
@@ -38,7 +52,15 @@ export default async function OrganizationPage() {
           Departments, categories and employee roles — the master data every other screen depends on.
         </p>
       </div>
-      <OrgTabs departments={departments} users={users} />
+      <OrgTabs
+        departments={departments}
+        users={activeUsers}
+        employees={employees}
+        categories={categories.map((c) => ({
+          ...c,
+          extraFields: c.extraFields as { warrantyMonths?: number } | null,
+        }))}
+      />
     </div>
   );
 }

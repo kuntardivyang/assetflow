@@ -135,9 +135,16 @@ export async function requestTransfer(input: RequestTransferInput, actorId: stri
   const { assetId, toUserId, reason } = input;
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
-    select: { id: true, tag: true, name: true, currentHolderId: true },
+    select: { id: true, tag: true, name: true, currentHolderId: true, bookable: true },
   });
   if (!asset) throw new AllocationError("NOT_FOUND", "Asset not found.");
+  // same guard as allocate() — transfers are the other door into ALLOCATED
+  if (asset.bookable) {
+    throw new AllocationError(
+      "INVALID_STATE",
+      `${asset.name} is a shared bookable resource — reserve it via Resource Booking instead.`,
+    );
+  }
 
   const active = await prisma.allocation.findFirst({
     where: { assetId, status: "ACTIVE" },

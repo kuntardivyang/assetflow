@@ -109,6 +109,8 @@ model User {
   maintenanceRaised  MaintenanceRequest[]
   transfersRequested TransferRequest[]   @relation("TransferRequestedBy")
   transfersApproved  TransferRequest[]   @relation("TransferApprovedBy")
+  transfersFrom      TransferRequest[]   @relation("TransferFrom")
+  transfersTo        TransferRequest[]   @relation("TransferTo")
   auditCyclesCreated AuditCycle[]        @relation("AuditCreatedBy")
   auditAssignments   AuditCycleAuditor[]
   notifications      Notification[]
@@ -127,10 +129,11 @@ model Department {
   children  Department[] @relation("DeptHierarchy")
   createdAt DateTime @default(now())
 
-  members     User[]       @relation("DeptMembers")
-  assets      Asset[]
-  allocations Allocation[]
-  bookings    Booking[]
+  members       User[]       @relation("DeptMembers")
+  assets        Asset[]
+  allocations   Allocation[]
+  bookings      Booking[]
+  auditScopes   AuditCycle[] @relation("AuditScope")
 }
 
 model Category {
@@ -160,16 +163,24 @@ model Asset {
   currentDeptId   String?
   currentDept     Department? @relation(fields: [currentDeptId], references: [id])
   createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt @default(now())
 
   allocations         Allocation[]
   transferRequests    TransferRequest[]
   bookings            Booking[]
   maintenanceRequests MaintenanceRequest[]
   auditItems          AuditItem[]
+
+  @@index([status])     // dashboard counts + registry status filter
+  @@index([categoryId]) // registry category filter
 }
 
 // ---------- Transactional data ----------
 
+// NOTE: a partial UNIQUE index `one_active_alloc` on (assetId) WHERE status = 'ACTIVE'
+// enforces "at most one ACTIVE allocation per asset" at the database layer — the
+// core double-allocation guard (R1). Prisma can't express partial indexes, so it
+// lives as raw SQL in the migration; see prisma/migrations/*/migration.sql.
 model Allocation {
   id                 String           @id @default(cuid())
   assetId            String
@@ -185,6 +196,9 @@ model Allocation {
   returnedAt         DateTime?
   returnCondition    String?
   status             AllocationStatus @default(ACTIVE)
+
+  @@index([assetId])                    // per-asset allocation history
+  @@index([status, expectedReturnDate]) // dashboard overdue + listOverdue()
 }
 
 model TransferRequest {
@@ -192,7 +206,9 @@ model TransferRequest {
   assetId       String
   asset         Asset          @relation(fields: [assetId], references: [id])
   fromUserId    String?
+  fromUser      User?          @relation("TransferFrom", fields: [fromUserId], references: [id])
   toUserId      String
+  toUser        User           @relation("TransferTo", fields: [toUserId], references: [id])
   reason        String
   status        TransferStatus @default(REQUESTED)
   requestedById String
@@ -200,7 +216,10 @@ model TransferRequest {
   approvedById  String?
   approvedBy    User?          @relation("TransferApprovedBy", fields: [approvedById], references: [id])
   createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt @default(now())
   decidedAt     DateTime?
+
+  @@index([assetId, status]) // pending-transfer lookups + dashboard count
 }
 
 model Booking {
@@ -231,13 +250,17 @@ model MaintenanceRequest {
   technicianName String?
   photoUrl       String?
   createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt @default(now())
   resolvedAt     DateTime?
+
+  @@index([status]) // kanban board columns + open-maintenance count
 }
 
 model AuditCycle {
   id            String      @id @default(cuid())
   name          String
   scopeDeptId   String?
+  scopeDept     Department? @relation("AuditScope", fields: [scopeDeptId], references: [id])
   scopeLocation String?
   startDate     DateTime
   endDate       DateTime
@@ -253,7 +276,8 @@ model AuditCycle {
 
 model AuditCycleAuditor {
   cycleId String
-  cycle   AuditCycle @relation(fields: [cycleId], references: [id])
+  // Cascade: deleting a cycle removes its auditor assignments (join rows).
+  cycle   AuditCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   userId  String
   user    User       @relation(fields: [userId], references: [id])
 
@@ -263,18 +287,22 @@ model AuditCycleAuditor {
 model AuditItem {
   id               String      @id @default(cuid())
   cycleId          String
-  cycle            AuditCycle  @relation(fields: [cycleId], references: [id])
+  // Cascade: audit items are owned by their cycle — deleting the cycle removes them.
+  cycle            AuditCycle  @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   assetId          String
   asset            Asset       @relation(fields: [assetId], references: [id])
   expectedLocation String?
   result           AuditResult @default(PENDING)
   notes            String?
+
+  @@index([cycleId]) // load a cycle's checklist
 }
 
 model Notification {
   id        String    @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id])
+  // Cascade: a user's notifications are removed with the user.
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotifType
   message   String
   read      Boolean   @default(false)

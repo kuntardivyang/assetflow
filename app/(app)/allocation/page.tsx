@@ -13,7 +13,7 @@ export default async function AllocationPage({
   const { assetId } = await searchParams;
   const session = await auth();
 
-  const [assets, employees, activeAllocation, history, pendingTransfers, allUsers] = await Promise.all([
+  const [assets, employees, activeAllocation, history, pendingTransfers] = await Promise.all([
     prisma.asset.findMany({
       orderBy: { tag: "asc" },
       select: { id: true, tag: true, name: true, status: true },
@@ -50,13 +50,13 @@ export default async function AllocationPage({
     prisma.transferRequest.findMany({
       where: { status: "REQUESTED" },
       orderBy: { createdAt: "desc" },
-      include: { asset: { select: { tag: true, name: true } } },
+      include: {
+        asset: { select: { tag: true, name: true } },
+        fromUser: { select: { name: true } },
+        toUser: { select: { name: true } },
+      },
     }),
-    // TransferRequest.fromUserId/toUserId are bare ids (no relation) — resolve names via a lookup.
-    prisma.user.findMany({ select: { id: true, name: true } }),
   ]);
-
-  const nameOf = new Map(allUsers.map((u) => [u.id, u.name] as const));
 
   const holder = activeAllocation
     ? {
@@ -95,8 +95,8 @@ export default async function AllocationPage({
           id: t.id,
           assetTag: t.asset.tag,
           assetName: t.asset.name,
-          fromName: t.fromUserId ? nameOf.get(t.fromUserId) ?? "—" : "—",
-          toName: nameOf.get(t.toUserId) ?? "—",
+          fromName: t.fromUser?.name ?? "—",
+          toName: t.toUser?.name ?? "—",
           reason: t.reason,
         }))}
         history={history.map((a) => ({

@@ -46,11 +46,15 @@ export function CategoriesTab({ categories }: { categories: Category[] }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const warrantyNum = warranty.trim() === "" ? null : Number(warranty);
+    if (warrantyNum !== null && Number.isNaN(warrantyNum)) {
+      return setError("Warranty must be a number of months");
+    }
     setPending(true);
     setError("");
     const payload = {
       name: name.trim(),
-      warrantyMonths: warranty.trim() === "" ? null : Number(warranty),
+      warrantyMonths: warrantyNum,
     };
     const res = await fetch(editing ? `/api/categories/${editing.id}` : "/api/categories", {
       method: editing ? "PATCH" : "POST",

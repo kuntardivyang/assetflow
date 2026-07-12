@@ -40,6 +40,14 @@ export async function POST(req: Request) {
     }
 
     const { name, warrantyMonths } = parsed.data;
+    // DB @unique is case-sensitive — pre-check insensitively so "laptops"
+    // can't slip in next to "Laptops" (parity with departments).
+    const dupe = await prisma.category.findFirst({
+      where: { name: { equals: name, mode: "insensitive" } },
+    });
+    if (dupe) {
+      return NextResponse.json({ error: "A category with this name already exists" }, { status: 409 });
+    }
     try {
       const category = await prisma.category.create({
         data: { name, extraFields: warrantyMonths ? { warrantyMonths } : undefined },

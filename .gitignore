@@ -35,3 +35,6 @@ next-env.d.ts
 # local tooling (stray orchestration file)
 mao_state.db
 *.db-journal
+
+# stray orchestration artifacts
+checkpoints/

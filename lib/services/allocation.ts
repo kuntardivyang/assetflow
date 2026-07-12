@@ -234,16 +234,27 @@ export async function rejectTransfer(transferId: string, actorId: string) {
   if (tr.status !== "REQUESTED") {
     throw new AllocationError("INVALID_STATE", "This transfer request has already been decided.");
   }
+  const asset = await prisma.asset.findUnique({
+    where: { id: tr.assetId },
+    select: { tag: true, name: true },
+  });
   await prisma.transferRequest.update({
     where: { id: transferId },
     data: { status: "REJECTED", approvedById: actorId, decidedAt: new Date() },
+  });
+  // Let the requester know the outcome (TRANSFER_REJECTED added to NotifType on main).
+  await notify({
+    userId: tr.requestedById,
+    type: "TRANSFER_REJECTED",
+    message: `Transfer request for ${asset?.tag ?? "asset"} ${asset?.name ?? ""} was rejected`.trim(),
+    link: "/allocation",
   });
   await logActivity({
     actorId,
     action: "transfer.reject",
     entityType: "TransferRequest",
     entityId: transferId,
-    description: `Transfer rejected for asset ${tr.assetId}`,
+    description: `Transfer rejected for ${asset?.tag ?? tr.assetId}`,
   });
   return { ok: true };
 }

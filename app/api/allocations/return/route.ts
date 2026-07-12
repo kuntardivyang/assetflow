@@ -15,7 +15,6 @@ const schema = z
   });
 
 // POST /api/allocations/return — Asset Manager performs the return (one step, per review B7).
-// NOTE: uses "transfer:approve" until the foundation adds a dedicated "return:approve" action (review C2).
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -30,7 +29,7 @@ export async function POST(req: Request) {
     );
   }
   try {
-    assertCan(session.user.role, "transfer:approve");
+    assertCan(session.user.role, "return:approve");
     const result = await returnAsset(parsed.data, session.user.id);
     return NextResponse.json(result, { status: 200 });
   } catch (e) {

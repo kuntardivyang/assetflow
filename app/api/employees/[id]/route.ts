@@ -6,9 +6,7 @@ import { logActivity } from "@/lib/services/notifications";
 import { ROLE_LABELS } from "@/lib/rbac";
 
 const patchSchema = z.object({
-  // Role whitelist deliberately EXCLUDES ADMIN: this endpoint can promote to
-  // Department Head / Asset Manager only — no path mints another Admin, even
-  // for an Admin caller (no self-elevation, spec requirement).
+  // no ADMIN here on purpose — this endpoint can never mint an admin
   role: z.enum(["EMPLOYEE", "DEPARTMENT_HEAD", "ASSET_MANAGER"], {
     error: "Role must be Employee, Department Head or Asset Manager",
   }).optional(),
@@ -36,8 +34,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (!target) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
-    // Admin accounts are managed outside this screen — the directory can
-    // neither demote an Admin nor deactivate one.
     if (target.role === "ADMIN") {
       return NextResponse.json({ error: "Admin accounts cannot be edited here" }, { status: 403 });
     }

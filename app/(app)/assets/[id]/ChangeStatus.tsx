@@ -26,7 +26,7 @@ export function ChangeStatus({ assetId, targets }: { assetId: string; targets: s
     if (!res) return setError("Network error — try again");
     const data = await res.json().catch(() => null);
     if (!res.ok) return setError(data?.error ?? `Request failed (${res.status})`);
-    // Redirect-200 tripwire (expired session → login HTML with res.ok true).
+    // expired session comes back as a 200 login page, not JSON
     if (!data?.id) return setError("Unexpected response — are you still signed in?");
     setTarget("");
     router.refresh();

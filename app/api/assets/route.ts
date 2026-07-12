@@ -33,9 +33,7 @@ const createSchema = z.object({
   bookable: z.boolean().optional(),
 });
 
-// GET /api/assets — searchable directory for any signed-in user.
-// Filters: q (tag/serial/name — the "QR code" search is the same text match),
-// categoryId, status, deptId, location (PDF requires all four dropdowns).
+// Searchable directory. q matches tag/serial/name (QR search = same text match).
 export async function GET(req: Request) {
   try {
     await requireSession();
@@ -85,10 +83,8 @@ export async function POST(req: Request) {
     }
     const d = parsed.data;
 
-    // Tag comes from the Postgres sequence inside the same transaction as the
-    // insert — race-free and delete-proof (review B2). Never count()+1.
-    // (A rolled-back create leaves a tag gap; uniqueness, not gaplessness,
-    // is the invariant.)
+    // tag comes from the postgres sequence inside the same transaction —
+    // count()+1 would collide after deletes and under concurrency
     let asset;
     try {
       asset = await prisma.$transaction(async (tx) => {

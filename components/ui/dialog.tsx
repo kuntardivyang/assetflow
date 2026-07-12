@@ -4,12 +4,9 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
-/**
- * Lightweight modal, no dialog library. Controlled: parent owns `open`.
- * Overlay click, Escape and ✕ all call `onClose` — gate it in the parent if a
- * save is in flight. No focus trap — add one before reusing for anything
- * keyboard-heavy.
- */
+// Controlled modal, no dialog library. Overlay click / Escape / ✕ all go
+// through onClose — gate it in the parent while a save is in flight.
+// No focus trap yet.
 export function Dialog({
   open,
   onClose,

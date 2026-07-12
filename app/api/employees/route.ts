@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSession, apiError } from "@/lib/api";
 
-// GET /api/employees — directory picklist (allocation "To" selector, dept-head
-// assignment). Any signed-in user; returns no sensitive fields. Active only by
-// default; ?all=1 includes deactivated accounts for the ADMIN directory table.
+// Directory picklist (allocation "To" selector etc). Active only by default;
+// ?all=1 (admin) includes deactivated accounts.
 export async function GET(req: Request) {
   try {
     const session = await requireSession();

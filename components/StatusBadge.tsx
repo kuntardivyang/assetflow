@@ -13,6 +13,7 @@ const TONE: Record<string, string> = {
   DISPOSED: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
   // generic workflow
   ACTIVE: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  INACTIVE: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
   RETURNED: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
   REQUESTED: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
   APPROVED: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",

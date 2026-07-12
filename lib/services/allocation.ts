@@ -46,9 +46,17 @@ export async function allocate(input: AllocateInput, actorId: string) {
 
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
-    select: { id: true, tag: true, name: true, status: true },
+    select: { id: true, tag: true, name: true, status: true, bookable: true },
   });
   if (!asset) throw new AllocationError("NOT_FOUND", "Asset not found.");
+  // shared bookable resources live in Resource Booking, not allocation —
+  // allocating one would strand its existing bookings
+  if (asset.bookable) {
+    throw new AllocationError(
+      "INVALID_STATE",
+      `${asset.name} is a shared bookable resource — reserve it via Resource Booking instead.`,
+    );
+  }
   if (asset.status === "ALLOCATED") {
     throw new AllocationError(
       "CONFLICT",

@@ -89,6 +89,7 @@ export default async function AllocationPage({
         canAllocate={can(session?.user?.role, "asset:allocate")}
         canRequestTransfer={can(session?.user?.role, "transfer:request")}
         canApprove={can(session?.user?.role, "transfer:approve")}
+        canReturn={can(session?.user?.role, "return:approve")}
         pendingTransfers={pendingTransfers.map((t) => ({
           id: t.id,
           assetTag: t.asset.tag,

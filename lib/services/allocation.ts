@@ -150,7 +150,15 @@ export async function requestTransfer(input: RequestTransferInput, actorId: stri
     where: { assetId, status: "ACTIVE" },
     select: { toUserId: true },
   });
-  const fromUserId = active?.toUserId ?? asset.currentHolderId ?? null;
+  // A transfer only applies to an asset that is currently held — otherwise approving it
+  // would force an AVAILABLE / under-maintenance / lost asset into ALLOCATED. Use Allocate.
+  if (!active) {
+    throw new AllocationError(
+      "INVALID_STATE",
+      `${asset.tag} ${asset.name} is not currently allocated — allocate it instead of transferring.`,
+    );
+  }
+  const fromUserId = active.toUserId ?? asset.currentHolderId ?? null;
   if (fromUserId && fromUserId === toUserId) {
     throw new AllocationError("INVALID_STATE", "Asset is already held by that person.");
   }
@@ -191,6 +199,14 @@ export async function approveTransfer(transferId: string, actorId: string) {
       select: { expectedReturnDate: true },
     }),
   ]);
+  // Defense-in-depth: if the asset was returned/lost between request and approval,
+  // there is nothing to transfer — don't force it back into ALLOCATED.
+  if (!oldActive) {
+    throw new AllocationError(
+      "INVALID_STATE",
+      "This asset is no longer allocated — the transfer can't be approved.",
+    );
+  }
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {

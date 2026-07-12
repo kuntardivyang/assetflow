@@ -9,11 +9,20 @@ const schema = z
     assetId: z.string().min(1, "Select an asset"),
     toUserId: z.string().min(1).optional(),
     toDeptId: z.string().min(1).optional(),
-    expectedReturnDate: z.string().optional(),
+    expectedReturnDate: z.coerce.date({ error: "Invalid return date" }).optional(),
   })
   .refine((d) => d.toUserId || d.toDeptId, {
     message: "Choose an employee or department to allocate to",
-  });
+  })
+  .refine(
+    (d) => {
+      if (!d.expectedReturnDate) return true;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return d.expectedReturnDate >= today;
+    },
+    { message: "Expected return date can't be in the past", path: ["expectedReturnDate"] },
+  );
 
 // POST /api/allocations — allocate an available asset. Enforces R1 (double-allocation block).
 export async function POST(req: Request) {
@@ -39,7 +48,7 @@ export async function POST(req: Request) {
         assetId,
         toUserId,
         toDeptId,
-        expectedReturnDate: expectedReturnDate ? new Date(expectedReturnDate) : undefined,
+        expectedReturnDate,
       },
       session.user.id,
     );

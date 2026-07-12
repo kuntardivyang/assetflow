@@ -86,7 +86,12 @@ export function BookingClient({
     setPending(false);
     if (!res) return setError("Network error — try again");
     const data = await res.json().catch(() => null);
-    if (res.status === 409) return setConflict(data?.error ?? "Conflict — slot is unavailable");
+    if (res.status === 409) {
+      const clash = data?.conflict
+        ? ` Clashes with ${data.conflict.bookedByName ?? "another"}'s booking, ${fmtTime(data.conflict.startTime)} to ${fmtTime(data.conflict.endTime)}.`
+        : "";
+      return setConflict(`${data?.error ?? "Conflict — slot is unavailable"}.${clash}`);
+    }
     if (!res.ok) return setError(data?.error ?? `Request failed (${res.status})`);
     if (!data?.id) return setError("Unexpected response — are you still signed in?");
     router.refresh();
@@ -96,11 +101,13 @@ export function BookingClient({
     setBusyId(b.id);
     setCancelError("");
     const res = await fetch(`/api/bookings/${b.id}/cancel`, { method: "POST" }).catch(() => null);
+    const data = res ? await res.json().catch(() => null) : null;
     setBusyId(null);
     if (!res || !res.ok) {
-      const data = res ? await res.json().catch(() => null) : null;
       return setCancelError(data?.error ?? (res ? `Request failed (${res.status})` : "Network error"));
     }
+    // expired session comes back as a 200 login page, not JSON
+    if (!data?.id) return setCancelError("Unexpected response — are you still signed in?");
     router.refresh();
   }
 
@@ -116,7 +123,9 @@ export function BookingClient({
     if (!resched) return;
     setBusyId(resched.id);
     setReschedError("");
-    const day = resched.startTime.slice(0, 10);
+    // local calendar date — slicing the ISO string would give the UTC date,
+    // which is a different day for early-morning slots
+    const day = new Date(resched.startTime).toLocaleDateString("en-CA");
     const res = await fetch(`/api/bookings/${resched.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -125,10 +134,19 @@ export function BookingClient({
         endTime: new Date(`${day}T${reschedEnd}:00`).toISOString(),
       }),
     }).catch(() => null);
-    setBusyId(null);
-    if (!res) return setReschedError("Network error — try again");
+    if (!res) {
+      setBusyId(null);
+      return setReschedError("Network error — try again");
+    }
     const data = await res.json().catch(() => null);
-    if (!res.ok) return setReschedError(data?.error ?? `Request failed (${res.status})`);
+    setBusyId(null);
+    if (!res.ok) {
+      return setReschedError(
+        data?.conflict
+          ? `${data.error} — clashes with the ${fmtTime(data.conflict.startTime)} to ${fmtTime(data.conflict.endTime)} booking`
+          : (data?.error ?? `Request failed (${res.status})`),
+      );
+    }
     if (!data?.id) return setReschedError("Unexpected response — are you still signed in?");
     setResched(null);
     router.refresh();

@@ -140,15 +140,15 @@ export async function createBooking(params: {
       type: "BOOKING_CONFIRMED",
       message: `Booking confirmed: ${booking.asset.name} — ${fmtRange(booking.startTime, booking.endTime)}`,
       link: "/booking",
-    }),
+    }).catch((err) => console.error("[booking.create] notify failed", err)),
     logActivity({
       actorId: params.bookedById,
       action: "booking.create",
       entityType: "Booking",
       entityId: booking.id,
       description: `Booked ${booking.asset.name} (${booking.asset.tag}) ${fmtRange(booking.startTime, booking.endTime)}`,
-    }),
-  ]).catch((err) => console.error("[booking.create] notify/log failed", err));
+    }).catch((err) => console.error("[booking.create] log failed", err)),
+  ]);
 
   return booking;
 }
@@ -205,15 +205,15 @@ export async function rescheduleBooking(params: {
       type: "BOOKING_CONFIRMED",
       message: `Booking rescheduled: ${booking.asset.name} — ${fmtRange(booking.startTime, booking.endTime)}`,
       link: "/booking",
-    }),
+    }).catch((err) => console.error("[booking.reschedule] notify failed", err)),
     logActivity({
       actorId: params.actorId,
       action: "booking.reschedule",
       entityType: "Booking",
       entityId: booking.id,
       description: `Rescheduled ${booking.asset.name} to ${fmtRange(booking.startTime, booking.endTime)}`,
-    }),
-  ]).catch((err) => console.error("[booking.reschedule] notify/log failed", err));
+    }).catch((err) => console.error("[booking.reschedule] log failed", err)),
+  ]);
 
   return booking;
 }
@@ -247,34 +247,35 @@ export async function cancelBooking(params: {
       type: "BOOKING_CANCELLED",
       message: `Booking cancelled: ${existing.asset.name} — ${fmtRange(existing.startTime, existing.endTime)}`,
       link: "/booking",
-    }),
+    }).catch((err) => console.error("[booking.cancel] notify failed", err)),
     logActivity({
       actorId: params.actorId,
       action: "booking.cancel",
       entityType: "Booking",
       entityId: booking.id,
       description: `Cancelled booking of ${existing.asset.name} (${existing.asset.tag})`,
-    }),
-  ]).catch((err) => console.error("[booking.cancel] notify/log failed", err));
+    }).catch((err) => console.error("[booking.cancel] log failed", err)),
+  ]);
 
   return booking;
 }
 
 // Reminders for bookings starting within the hour. dedupeKey + skipDuplicates
-// makes this safe to call on every page load.
+// makes this safe to call on every page load. Best-effort all the way — a
+// failure here must never take down the page that called it.
 export async function generateReminders(userId: string, now: Date = new Date()) {
-  const soon = new Date(now.getTime() + 60 * 60 * 1000);
-  const upcoming = await prisma.booking.findMany({
-    where: {
-      bookedById: userId,
-      status: { not: "CANCELLED" },
-      startTime: { gt: now, lte: soon },
-    },
-    include: { asset: { select: { name: true } } },
-  });
-  if (upcoming.length === 0) return;
-  await prisma.notification
-    .createMany({
+  try {
+    const soon = new Date(now.getTime() + 60 * 60 * 1000);
+    const upcoming = await prisma.booking.findMany({
+      where: {
+        bookedById: userId,
+        status: { not: "CANCELLED" },
+        startTime: { gt: now, lte: soon },
+      },
+      include: { asset: { select: { name: true } } },
+    });
+    if (upcoming.length === 0) return;
+    await prisma.notification.createMany({
       data: upcoming.map((b) => ({
         userId,
         type: "BOOKING_REMINDER" as const,
@@ -283,8 +284,10 @@ export async function generateReminders(userId: string, now: Date = new Date()) 
         dedupeKey: `BOOKING_REMINDER:${b.id}`,
       })),
       skipDuplicates: true,
-    })
-    .catch((err) => console.error("[booking.reminders] failed", err));
+    });
+  } catch (err) {
+    console.error("[booking.reminders] failed", err);
+  }
 }
 
 export function fmtRange(start: Date, end: Date): string {

@@ -1,15 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { z } from "zod";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authConfig } from "@/auth.config";
-
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
+import { loginSchema } from "@/lib/validation";
+import { verifyPassword, DUMMY_HASH } from "@/lib/password";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -18,15 +13,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       credentials: { email: {}, password: {} },
       async authorize(raw) {
-        const parsed = credentialsSchema.safeParse(raw);
+        const parsed = loginSchema.safeParse(raw);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.active) return null;
 
-        const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
+        // Always run a hash comparison — against a dummy when the user is
+        // missing/inactive — so response time doesn't leak whether the email
+        // exists (timing-based user enumeration).
+        const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
+        if (!user || !user.active || !ok) return null;
 
         return {
           id: user.id,

@@ -23,7 +23,8 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.department.deleteMany();
 
-  const hash = (pw: string) => bcrypt.hashSync(pw, 10);
+  // Same cost factor as lib/password.ts (BCRYPT_ROUNDS = 12).
+  const hash = (pw: string) => bcrypt.hashSync(pw, 12);
 
   console.log("Seeding users…");
   const admin = await prisma.user.create({

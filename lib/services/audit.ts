@@ -1,5 +1,24 @@
 import { prisma } from "@/lib/db";
 import { notify, logActivity } from "@/lib/services/notifications";
+
+/**
+ * Best-effort post-commit side effects: the cycle change already committed, so a
+ * notification or activity-log failure must not fail the request. Logged, not thrown.
+ */
+async function notifySafe(params: Parameters<typeof notify>[0]) {
+  try {
+    await notify(params);
+  } catch (e) {
+    console.error("[audit] post-commit notify failed", e);
+  }
+}
+async function logSafe(params: Parameters<typeof logActivity>[0]) {
+  try {
+    await logActivity(params);
+  } catch (e) {
+    console.error("[audit] post-commit activity log failed", e);
+  }
+}
 import { can } from "@/lib/rbac";
 import type { Role, AuditResult } from "@prisma/client";
 
@@ -84,7 +103,7 @@ export async function createCycle(input: CreateCycleInput, actorId: string) {
     },
   });
 
-  await logActivity({
+  await logSafe({
     actorId,
     action: "audit.create",
     entityType: "AuditCycle",
@@ -171,14 +190,14 @@ export async function closeCycle(cycleId: string, actorId: string) {
 
   // Notify the cycle owner per flagged item, and log the closure.
   for (const it of flagged) {
-    await notify({
+    await notifySafe({
       userId: cycle.createdById,
       type: "AUDIT_DISCREPANCY",
       message: `${it.asset.tag} ${it.asset.name} flagged ${it.result} in audit "${cycle.name}"`,
       link: "/audit",
     });
   }
-  await logActivity({
+  await logSafe({
     actorId,
     action: "audit.close",
     entityType: "AuditCycle",

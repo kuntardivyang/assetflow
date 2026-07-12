@@ -78,6 +78,7 @@ export default async function AllocationPage({
       </div>
 
       <AllocationClient
+        key={assetId ?? "none"}
         assets={assets}
         employees={employees.map((e) => ({
           id: e.id,

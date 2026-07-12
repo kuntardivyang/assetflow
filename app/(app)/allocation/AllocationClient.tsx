@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -78,15 +78,8 @@ export function AllocationClient({
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Reset the form whenever the selected asset changes.
-  useEffect(() => {
-    setToUserId("");
-    setExpectedReturnDate("");
-    setReason("");
-    setReturnCondition("");
-    setError("");
-    setSuccess("");
-  }, [selectedAssetId]);
+  // Form state resets when the selected asset changes because the page remounts
+  // this component with key={assetId} — no reset effect (avoids cascading renders).
 
   function onSelectAsset(id: string) {
     router.push(id ? `/allocation?assetId=${id}` : "/allocation");

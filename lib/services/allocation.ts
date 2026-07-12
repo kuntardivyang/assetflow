@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { PermissionError } from "@/lib/rbac";
 import { notify, logActivity } from "@/lib/services/notifications";
 
 /**
@@ -26,6 +27,23 @@ export class AllocationError extends Error {
 }
 
 const humanStatus = (s: string) => s.replaceAll("_", " ").toLowerCase();
+
+/**
+ * Department scoping (security). ADMIN and ASSET_MANAGER act org-wide, but a
+ * DEPARTMENT_HEAD may only act on assets tied to their own department. Without
+ * this, any dept head could allocate or approve transfers for another
+ * department's assets — a privilege-scope gap and a spec violation
+ * ("Dept Head approves within their department").
+ */
+async function requireDeptScope(actorId: string, deptId: string | null) {
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { role: true, departmentId: true },
+  });
+  if (actor?.role === "DEPARTMENT_HEAD" && (!deptId || actor.departmentId !== deptId)) {
+    throw new PermissionError("act on an asset outside your department");
+  }
+}
 
 export interface AllocateInput {
   assetId: string;
@@ -79,6 +97,9 @@ export async function allocate(input: AllocateInput, actorId: string) {
     });
     deptId = u?.departmentId ?? null;
   }
+
+  // A Dept Head can only allocate within their own department.
+  await requireDeptScope(actorId, deptId);
 
   // Race-safe: only one concurrent transaction can flip AVAILABLE -> ALLOCATED.
   const allocation = await prisma.$transaction(async (tx) => {
@@ -192,13 +213,15 @@ export async function approveTransfer(transferId: string, actorId: string) {
   }
 
   const [asset, toUser, oldActive] = await Promise.all([
-    prisma.asset.findUnique({ where: { id: tr.assetId }, select: { tag: true, name: true } }),
+    prisma.asset.findUnique({ where: { id: tr.assetId }, select: { tag: true, name: true, currentDeptId: true } }),
     prisma.user.findUnique({ where: { id: tr.toUserId }, select: { name: true, departmentId: true } }),
     prisma.allocation.findFirst({
       where: { assetId: tr.assetId, status: "ACTIVE" },
       select: { expectedReturnDate: true },
     }),
   ]);
+  // A Dept Head can only approve transfers for assets held by their department.
+  await requireDeptScope(actorId, asset?.currentDeptId ?? null);
   // Defense-in-depth: if the asset was returned/lost between request and approval,
   // there is nothing to transfer — don't force it back into ALLOCATED.
   if (!oldActive) {
@@ -267,8 +290,10 @@ export async function rejectTransfer(transferId: string, actorId: string) {
   }
   const asset = await prisma.asset.findUnique({
     where: { id: tr.assetId },
-    select: { tag: true, name: true },
+    select: { tag: true, name: true, currentDeptId: true },
   });
+  // A Dept Head can only reject transfers for assets held by their department.
+  await requireDeptScope(actorId, asset?.currentDeptId ?? null);
   await prisma.transferRequest.update({
     where: { id: transferId },
     data: { status: "REJECTED", approvedById: actorId, decidedAt: new Date() },

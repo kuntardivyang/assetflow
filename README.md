@@ -130,6 +130,10 @@ stateDiagram-v2
 - **Timing-safe login**: a dummy hash is compared when an email doesn't exist, so response time can't be used to enumerate valid accounts.
 - **Email normalization**: trim + lowercase on signup and login.
 - **No self-elevation**: signup can only create an Employee.
+- **Department scoping**: a Department Head can only allocate / approve transfers for assets in their own department (Admin & Asset Manager act org-wide).
+- **Rate limiting** on `/api/auth/*` (login + signup) to blunt credential stuffing and signup spam.
+- **Audit trail**: successful sign-ins are written to the activity log; failed attempts are security-logged.
+- **Enumeration-safe signup**: the response never reveals whether an email is already registered.
 
 ---
 

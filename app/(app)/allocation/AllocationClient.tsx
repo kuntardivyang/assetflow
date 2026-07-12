@@ -52,6 +52,7 @@ export function AllocationClient({
   canAllocate,
   canRequestTransfer,
   canApprove,
+  canReturn,
   history,
   pendingTransfers,
 }: {
@@ -62,6 +63,7 @@ export function AllocationClient({
   canAllocate: boolean;
   canRequestTransfer: boolean;
   canApprove: boolean;
+  canReturn: boolean;
   history: HistoryRow[];
   pendingTransfers: PendingTransfer[];
 }) {
@@ -293,7 +295,7 @@ export function AllocationClient({
             )}
 
             {/* Return (Asset Manager) — held asset back to available */}
-            {selected && isAllocated && canApprove && (
+            {selected && isAllocated && canReturn && (
               <div className="space-y-2 border-t border-border pt-4">
                 <Label htmlFor="returnCond">Return asset</Label>
                 <Input

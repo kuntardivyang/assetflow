@@ -4,6 +4,26 @@ import { PermissionError } from "@/lib/rbac";
 import { notify, logActivity } from "@/lib/services/notifications";
 
 /**
+ * Post-commit side effects are best-effort: the allocation/transfer already
+ * committed, so a notification or activity-log hiccup must not turn a successful
+ * mutation into a 500. Failures are logged, not thrown.
+ */
+async function notifySafe(params: Parameters<typeof notify>[0]) {
+  try {
+    await notify(params);
+  } catch (e) {
+    console.error("[allocation] post-commit notify failed", e);
+  }
+}
+async function logSafe(params: Parameters<typeof logActivity>[0]) {
+  try {
+    await logActivity(params);
+  } catch (e) {
+    console.error("[allocation] post-commit activity log failed", e);
+  }
+}
+
+/**
  * Screen 5 business rules — the differentiators for AssetFlow.
  *
  * R1 (double-allocation block): an asset that is already ALLOCATED cannot be
@@ -150,14 +170,14 @@ export async function allocate(input: AllocateInput, actorId: string) {
 
   // Side effects after commit — a notification failure must not roll back the allocation.
   if (toUserId) {
-    await notify({
+    await notifySafe({
       userId: toUserId,
       type: "ASSET_ASSIGNED",
       message: `${asset.tag} ${asset.name} assigned to you`,
       link: "/allocation",
     });
   }
-  await logActivity({
+  await logSafe({
     actorId,
     action: "asset.allocate",
     entityType: "Asset",
@@ -217,7 +237,7 @@ export async function requestTransfer(input: RequestTransferInput, actorId: stri
   const tr = await prisma.transferRequest.create({
     data: { assetId, fromUserId, toUserId, reason, requestedById: actorId, status: "REQUESTED" },
   });
-  await logActivity({
+  await logSafe({
     actorId,
     action: "transfer.request",
     entityType: "TransferRequest",
@@ -292,13 +312,13 @@ export async function approveTransfer(transferId: string, actorId: string) {
     });
   }).catch(mapAllocationDbError);
 
-  await notify({
+  await notifySafe({
     userId: tr.toUserId,
     type: "TRANSFER_APPROVED",
     message: `${asset?.tag ?? "Asset"} transferred to you`,
     link: "/allocation",
   });
-  await logActivity({
+  await logSafe({
     actorId,
     action: "transfer.approve",
     entityType: "TransferRequest",
@@ -326,13 +346,13 @@ export async function rejectTransfer(transferId: string, actorId: string) {
     data: { status: "REJECTED", approvedById: actorId, decidedAt: new Date() },
   });
   // Let the requester know the outcome (TRANSFER_REJECTED added to NotifType on main).
-  await notify({
+  await notifySafe({
     userId: tr.requestedById,
     type: "TRANSFER_REJECTED",
     message: `Transfer request for ${asset?.tag ?? "asset"} ${asset?.name ?? ""} was rejected`.trim(),
     link: "/allocation",
   });
-  await logActivity({
+  await logSafe({
     actorId,
     action: "transfer.reject",
     entityType: "TransferRequest",
@@ -376,7 +396,7 @@ export async function returnAsset(input: ReturnInput, actorId: string) {
     });
   });
 
-  await logActivity({
+  await logSafe({
     actorId,
     action: "asset.return",
     entityType: "Asset",

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { PermissionError } from "@/lib/rbac";
 import { notify, logActivity } from "@/lib/services/notifications";
@@ -27,6 +28,28 @@ export class AllocationError extends Error {
 }
 
 const humanStatus = (s: string) => s.replaceAll("_", " ").toLowerCase();
+
+/**
+ * Turn low-level Prisma DB errors into typed AllocationErrors so routes map them
+ * to 4xx instead of a generic 500. In particular the `one_active_alloc` partial
+ * unique index (a concurrent allocate/approve losing the race) surfaces as P2002.
+ * Re-throws AllocationError untouched and anything else as-is.
+ */
+function mapAllocationDbError(e: unknown): never {
+  if (e instanceof AllocationError) throw e;
+  if (e instanceof Prisma.PrismaClientKnownRequestError) {
+    if (e.code === "P2002") {
+      throw new AllocationError(
+        "CONFLICT",
+        "This asset's allocation just changed — please retry.",
+      );
+    }
+    if (e.code === "P2003" || e.code === "P2025") {
+      throw new AllocationError("NOT_FOUND", "A referenced record no longer exists.");
+    }
+  }
+  throw e;
+}
 
 /**
  * Department scoping (security). ADMIN and ASSET_MANAGER act org-wide, but a
@@ -123,7 +146,7 @@ export async function allocate(input: AllocateInput, actorId: string) {
         status: "ACTIVE",
       },
     });
-  });
+  }).catch(mapAllocationDbError);
 
   // Side effects after commit — a notification failure must not roll back the allocation.
   if (toUserId) {
@@ -233,10 +256,14 @@ export async function approveTransfer(transferId: string, actorId: string) {
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
-    await tx.transferRequest.update({
-      where: { id: transferId },
+    // Claim the request atomically — a concurrent approval sees count 0 and aborts.
+    const claimed = await tx.transferRequest.updateMany({
+      where: { id: transferId, status: "REQUESTED" },
       data: { status: "APPROVED", approvedById: actorId, decidedAt: now },
     });
+    if (claimed.count === 0) {
+      throw new AllocationError("INVALID_STATE", "This transfer request has already been decided.");
+    }
     // [B1] Auto-reject any other pending transfers for this asset so an approved
     // move can't be undone by a stale sibling request (also prevents a second ACTIVE).
     await tx.transferRequest.updateMany({
@@ -263,7 +290,7 @@ export async function approveTransfer(transferId: string, actorId: string) {
       where: { id: tr.assetId },
       data: { status: "ALLOCATED", currentHolderId: tr.toUserId, currentDeptId: toUser?.departmentId ?? null },
     });
-  });
+  }).catch(mapAllocationDbError);
 
   await notify({
     userId: tr.toUserId,

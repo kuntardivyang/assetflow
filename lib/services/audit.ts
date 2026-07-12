@@ -31,7 +31,7 @@ import type { Role, AuditResult } from "@prisma/client";
  *    We never recompute against live data.
  *  - [C3] The discrepancy report is derived LIVE from item results (MISSING /
  *    DAMAGED) — the UI shows it as auditors mark, before closing.
- *  - [C1] Closing a cycle requires `audit:manage` (Admin / Asset Manager), so
+ *  - [C1] Closing a cycle requires `audit:manage` (Admin only, per the PDF), so
  *    the person closing IS the approver — LOST is never applied unapproved.
  *  - [B8] DAMAGED sets asset.condition = "Damaged"; it does NOT auto-create a
  *    MaintenanceRequest.
@@ -83,6 +83,17 @@ export async function createCycle(input: CreateCycleInput, actorId: string) {
     throw new AuditError("INVALID_STATE", "No assets match this audit scope.");
   }
 
+  // Dedupe auditors and confirm they exist, so a duplicate/stale id surfaces as a
+  // clean 400 instead of a raw Prisma unique/FK error (P2002/P2003) → 500.
+  const uniqueAuditorIds = [...new Set(auditorIds)];
+  const foundAuditors = await prisma.user.findMany({
+    where: { id: { in: uniqueAuditorIds } },
+    select: { id: true },
+  });
+  if (foundAuditors.length !== uniqueAuditorIds.length) {
+    throw new AuditError("INVALID_STATE", "One or more selected auditors no longer exist.");
+  }
+
   const cycle = await prisma.auditCycle.create({
     data: {
       name,
@@ -92,7 +103,7 @@ export async function createCycle(input: CreateCycleInput, actorId: string) {
       endDate,
       status: "OPEN",
       createdById: actorId,
-      auditors: { create: auditorIds.map((userId) => ({ userId })) },
+      auditors: { create: uniqueAuditorIds.map((userId) => ({ userId })) },
       items: {
         create: assets.map((a) => ({
           assetId: a.id,

@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { assertCan, PermissionError } from "@/lib/rbac";
 import { closeCycle, AuditError } from "@/lib/services/audit";
 
-// POST /api/audit/[id]/close — Admin / Asset Manager closes a cycle (the resolution step).
+// POST /api/audit/[id]/close — Admin closes a cycle (the discrepancy-resolution step).
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) {

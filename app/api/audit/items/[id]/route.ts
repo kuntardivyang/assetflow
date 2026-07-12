@@ -8,7 +8,7 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
-// PATCH /api/audit/items/[id] — an assigned auditor (or Admin/AM) marks a checklist item.
+// PATCH /api/audit/items/[id] — an assigned auditor (or an audit:manage Admin) marks a checklist item.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) {

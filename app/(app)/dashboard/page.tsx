@@ -13,17 +13,16 @@ import { prisma } from "@/lib/db";
 import { KpiCard } from "@/components/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDistanceToNow, startOfDay } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 // Screen 2 — real-time operational snapshot for every role.
 export default async function DashboardPage() {
   const now = new Date();
-  const todayStart = startOfDay(now);
 
   const [
     available,
     allocated,
-    maintenanceToday,
+    openMaintenance,
     activeBookings,
     pendingTransfers,
     upcomingReturns,
@@ -32,8 +31,14 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     prisma.asset.count({ where: { status: "AVAILABLE" } }),
     prisma.asset.count({ where: { status: "ALLOCATED" } }),
-    prisma.maintenanceRequest.count({ where: { createdAt: { gte: todayStart } } }),
-    prisma.booking.count({ where: { status: { in: ["UPCOMING", "ONGOING"] } } }),
+    // "Open Maintenance" — anything not yet resolved/rejected (review D7).
+    prisma.maintenanceRequest.count({
+      where: { status: { notIn: ["RESOLVED", "REJECTED"] } },
+    }),
+    // "Active Bookings" — derived: not cancelled and not yet ended (review B5).
+    prisma.booking.count({
+      where: { status: { not: "CANCELLED" }, endTime: { gt: now } },
+    }),
     prisma.transferRequest.count({ where: { status: "REQUESTED" } }),
     prisma.allocation.count({
       where: { status: "ACTIVE", expectedReturnDate: { gte: now } },
@@ -51,7 +56,7 @@ export default async function DashboardPage() {
   const kpis = [
     { label: "Available", value: available, icon: Boxes, tone: "success" as const },
     { label: "Allocated", value: allocated, icon: PackageCheck, tone: "default" as const },
-    { label: "Maintenance Today", value: maintenanceToday, icon: Wrench, tone: "warning" as const },
+    { label: "Open Maintenance", value: openMaintenance, icon: Wrench, tone: "warning" as const },
     { label: "Active Bookings", value: activeBookings, icon: CalendarClock, tone: "default" as const },
     { label: "Pending Transfers", value: pendingTransfers, icon: ArrowLeftRight, tone: "default" as const },
     { label: "Upcoming Returns", value: upcomingReturns, icon: Undo2, tone: "default" as const },
@@ -76,8 +81,8 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-3 rounded-[var(--radius)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger dark:border-red-900/50 dark:bg-red-900/20">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
-            {overdue} asset{overdue > 1 ? "s" : ""} overdue for return — flagged for
-            follow-up.
+            {overdue} asset{overdue === 1 ? "" : "s"} overdue for return - flagged
+            for follow-up
           </span>
         </div>
       )}

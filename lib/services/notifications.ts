@@ -26,7 +26,10 @@ export async function logActivity(params: {
   return prisma.activityLog.create({ data: params });
 }
 
-/** Map a notification type to the Screen 10 filter tab. */
+/**
+ * Map a notification type to the Screen 10 filter tab (review D8).
+ * Defined once here so both dashboard and notifications screens agree.
+ */
 export function notifTab(type: NotifType): "alerts" | "approvals" | "bookings" {
   switch (type) {
     case "BOOKING_CONFIRMED":
@@ -34,10 +37,11 @@ export function notifTab(type: NotifType): "alerts" | "approvals" | "bookings" {
     case "BOOKING_REMINDER":
       return "bookings";
     case "MAINT_APPROVED":
-    case "MAINT_REJECTED":
     case "TRANSFER_APPROVED":
       return "approvals";
     default:
-      return "alerts"; // ASSET_ASSIGNED, OVERDUE_RETURN, AUDIT_DISCREPANCY
+      // Alerts: OVERDUE_RETURN, AUDIT_DISCREPANCY, MAINT_REJECTED,
+      // TRANSFER_REJECTED, ASSET_ASSIGNED
+      return "alerts";
   }
 }

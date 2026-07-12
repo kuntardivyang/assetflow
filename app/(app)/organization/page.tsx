@@ -4,9 +4,8 @@ import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { OrgTabs } from "./OrgTabs";
 
-// Screen 3 — Organization Setup. The page is Admin-only, and every MUTATING
-// org route re-checks org:manage server-side (RBAC gates actions, not just
-// menus). GET /api/departments stays open to all signed-in users for picklists.
+// Screen 3 — org setup, admin only. Every mutating org route re-checks
+// org:manage itself; the GETs stay open for picklists.
 export default async function OrganizationPage() {
   const session = await auth();
   if (!can(session?.user?.role, "org:manage")) redirect("/dashboard");
@@ -23,8 +22,7 @@ export default async function OrganizationPage() {
       },
       orderBy: { name: "asc" },
     }),
-    // Full directory (incl. inactive) for the Employees tab; the head picker
-    // below filters to active accounts.
+    // full directory incl. inactive; head picker filters to active below
     prisma.user.findMany({
       select: {
         id: true,

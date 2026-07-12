@@ -10,11 +10,7 @@ export class UnauthenticatedError extends Error {
   }
 }
 
-/**
- * Auth + RBAC gate for API routes. Returns the session or throws;
- * pair with `apiError` in the route's catch so failures are legible
- * (401/403 JSON) instead of opaque 500s.
- */
+/** Auth + RBAC gate for API routes — pair with apiError in the catch. */
 export async function requireAction(action: Action): Promise<Session> {
   const session = await auth();
   if (!session?.user) throw new UnauthenticatedError();
@@ -22,7 +18,7 @@ export async function requireAction(action: Action): Promise<Session> {
   return session;
 }
 
-/** Session-only gate for routes any signed-in user may call (e.g. picklists). */
+/** Session-only gate (picklists etc). */
 export async function requireSession(): Promise<Session> {
   const session = await auth();
   if (!session?.user) throw new UnauthenticatedError();

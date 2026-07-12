@@ -36,8 +36,7 @@ export function RegisterAsset({ categories }: { categories: { id: string; name: 
     e.preventDefault();
     const cost = form.acquisitionCost.trim() === "" ? null : Number(form.acquisitionCost);
     if (cost !== null && Number.isNaN(cost)) return setError("Cost must be a number");
-    // Validate before pending starts — a throw after setPending(true) would
-    // lock the pending-guarded dialog permanently.
+    // validate before setPending — a throw after it would leave the dialog stuck
     if (form.acquisitionDate && Number.isNaN(Date.parse(form.acquisitionDate))) {
       return setError("Invalid acquisition date");
     }

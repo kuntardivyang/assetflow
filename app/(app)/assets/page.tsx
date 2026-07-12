@@ -18,10 +18,8 @@ const ASSET_STATUSES: AssetStatus[] = [
   "DISPOSED",
 ];
 
-// Screen 4 — Asset registrations and directory. Every filter hits the DB via
-// Prisma `where` (dynamic data, not client-side array filtering).
-// Repeated query keys arrive as arrays in Next 16 — collapse to first value
-// so ?q=a&q=b can't crash the page.
+// Screen 4 — asset registry. All filtering happens in the DB query.
+// repeated query keys come through as arrays — take the first
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function AssetsPage({

@@ -15,10 +15,8 @@ const createSchema = z.object({
   parentId: z.string().nullable().optional(),
 });
 
-// GET /api/departments — picklist for any signed-in user; defaults to
-// active-only (S4/S5 dropdowns, review D9). ?all=1 includes inactive but only
-// for ADMIN (silently ignored otherwise). Note: the org-setup table does NOT
-// use this route — it reads Prisma directly in page.tsx.
+// Picklist for any signed-in user, active depts only. ?all=1 (admin) includes
+// inactive. The org-setup table itself reads Prisma directly in page.tsx.
 export async function GET(req: Request) {
   try {
     const session = await requireSession();
@@ -47,8 +45,8 @@ export async function POST(req: Request) {
     }
 
     const { name, code, headId, parentId } = parsed.data;
-    // Department.name has no unique constraint in the schema — best-effort
-    // check here (not race-safe) so the demo can't show two "Engineering" rows.
+    // name has no unique constraint — best-effort check so we don't end up
+    // with two "Engineering" rows
     const dupe = await prisma.department.findFirst({
       where: { name: { equals: name, mode: "insensitive" } },
     });
@@ -60,8 +58,7 @@ export async function POST(req: Request) {
       const dept = await prisma.department.create({
         data: { name, code, headId: headId || null, parentId: parentId || null },
       });
-      // The mutation already succeeded — a logging failure must not turn it
-      // into a reported 500 (it would read as data corruption on retry).
+      // create succeeded — don't let a failed log entry turn it into a 500
       await logActivity({
         actorId: session.user.id,
         action: "department.create",

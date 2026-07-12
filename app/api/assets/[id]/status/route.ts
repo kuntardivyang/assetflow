@@ -5,10 +5,8 @@ import { requireAction, apiError } from "@/lib/api";
 import { canChangeStatus } from "@/lib/services/assets";
 import { logActivity } from "@/lib/services/notifications";
 
-// Guarded manual status change (review B6) — the ONLY way an asset reaches
-// RESERVED / RETIRED / DISPOSED / LOST outside the audit flow. Transitions are
-// whitelisted in lib/services/assets.ts; workflow-owned states (ALLOCATED,
-// UNDER_MAINTENANCE) cannot be entered or exited here.
+// Manual status change — the only way to reach RESERVED/RETIRED/DISPOSED/LOST.
+// Workflow-owned states (ALLOCATED, UNDER_MAINTENANCE) can't be set here.
 const schema = z.object({
   status: z.enum(["AVAILABLE", "RESERVED", "LOST", "RETIRED", "DISPOSED"], {
     error: "Pick a valid target status",
@@ -44,9 +42,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       );
     }
 
-    // Conditional write: only applies if status is still what the whitelist
-    // was checked against — a concurrent workflow transition makes this throw
-    // P2025 instead of being silently overwritten.
+    // conditional write — if something else changed the status since we
+    // checked the whitelist, this throws P2025 instead of clobbering it
     let updated;
     try {
       updated = await prisma.asset.update({

@@ -36,8 +36,7 @@ export default async function AssetDetailPage(ctx: { params: Promise<{ id: strin
   });
   if (!asset) notFound();
 
-  // Holder is derived from the ACTIVE allocation (currentHolderId is a bare
-  // string column with no relation — don't trust it for display).
+  // holder comes from the active allocation (currentHolderId has no relation)
   const activeAllocation = asset.allocations.find((a) => a.status === "ACTIVE");
   const holder = activeAllocation?.toUser?.name ?? activeAllocation?.toDept?.name ?? null;
   const canManage = can(session?.user?.role, "asset:manage");

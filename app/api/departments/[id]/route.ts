@@ -31,8 +31,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         { status: 400 },
       );
     }
-    // Walk the parent chain so re-parenting can't create a cycle (A→B→A);
-    // covers direct self-parenting on the first iteration.
+    // walk up the parent chain so re-parenting can't create a cycle
     if (parsed.data.parentId) {
       let cursor: string | null = parsed.data.parentId;
       for (let depth = 0; cursor && depth < 20; depth++) {
@@ -50,8 +49,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       }
     }
 
-    // Mirror the create route's duplicate-name guard — without this, an edit
-    // could rename a department into a duplicate (best-effort, not race-safe).
+    // same duplicate-name guard as create, excluding our own row
     if (parsed.data.name) {
       const dupe = await prisma.department.findFirst({
         where: { name: { equals: parsed.data.name, mode: "insensitive" }, id: { not: id } },
@@ -63,7 +61,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
     try {
       const dept = await prisma.department.update({ where: { id }, data: parsed.data });
-      // Mutation already succeeded — a logging failure must not surface as a 500.
       await logActivity({
         actorId: session.user.id,
         action: parsed.data.active === false ? "department.deactivate" : "department.update",

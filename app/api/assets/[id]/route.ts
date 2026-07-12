@@ -4,9 +4,8 @@ import { prisma } from "@/lib/db";
 import { requireAction, apiError } from "@/lib/api";
 import { logActivity } from "@/lib/services/notifications";
 
-// Edit schema deliberately EXCLUDES `status` — lifecycle status moves only
-// through workflows (allocation/maintenance/audit) or the guarded status
-// endpoint with its legal-transition whitelist (review B6).
+// no `status` here — lifecycle moves through workflows or the guarded
+// /status endpoint only
 const patchSchema = z.object({
   name: z.string().min(2, "Name is too short").optional(),
   categoryId: z.string().min(1).optional(),

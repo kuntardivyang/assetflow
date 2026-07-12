@@ -87,9 +87,13 @@ export async function POST(req: Request) {
 
     // Tag comes from the Postgres sequence inside the same transaction as the
     // insert — race-free and delete-proof (review B2). Never count()+1.
-    const asset = await prisma.$transaction(async (tx) => {
-      const tag = await nextTag(tx);
-      return tx.asset.create({
+    // (A rolled-back create leaves a tag gap; uniqueness, not gaplessness,
+    // is the invariant.)
+    let asset;
+    try {
+      asset = await prisma.$transaction(async (tx) => {
+        const tag = await nextTag(tx);
+        return tx.asset.create({
         data: {
           tag,
           name: d.name,
@@ -102,9 +106,18 @@ export async function POST(req: Request) {
           photoUrl: d.photoUrl || null,
           bookable: d.bookable ?? false,
         },
-        include: { category: { select: { id: true, name: true } } },
+          include: { category: { select: { id: true, name: true } } },
+        });
       });
-    });
+    } catch (e: unknown) {
+      if (typeof e === "object" && e !== null && "code" in e && e.code === "P2003") {
+        return NextResponse.json(
+          { error: "Selected category no longer exists — refresh and try again" },
+          { status: 400 },
+        );
+      }
+      throw e;
+    }
 
     await logActivity({
       actorId: session.user.id,
@@ -115,13 +128,7 @@ export async function POST(req: Request) {
     }).catch((err) => console.error("[POST /api/assets] activity log failed", err));
 
     return NextResponse.json(asset, { status: 201 });
-  } catch (e: unknown) {
-    if (typeof e === "object" && e !== null && "code" in e && e.code === "P2003") {
-      return NextResponse.json(
-        { error: "Selected category no longer exists — refresh and try again" },
-        { status: 400 },
-      );
-    }
+  } catch (e) {
     return apiError(e, "POST /api/assets");
   }
 }

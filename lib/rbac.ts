@@ -8,25 +8,28 @@ export type Action =
   | "org:manage" //   departments, categories, employees, role assignment (Admin only)
   | "asset:manage" // register / edit assets
   | "asset:allocate" //   allocate assets
-  | "transfer:approve" // approve transfers & returns
+  | "transfer:approve" // approve transfer requests (Dept Head: own dept)
+  | "return:approve" //   approve asset returns (Asset Manager, per PDF)
   | "maintenance:approve" // approve / reject maintenance
   | "maintenance:raise" //  raise a maintenance request
   | "booking:create" //  book a shared resource
   | "transfer:request" // initiate return / transfer request
-  | "audit:manage" //  create / close audit cycles
-  | "analytics:viewAll"; // org-wide analytics
+  | "audit:manage" //  create / close audit cycles (Admin only, per PDF)
+  | "analytics:viewAll"; // org-wide analytics (Admin only, per PDF)
 
+// Roles matched to the official PDF (review C2).
 const MATRIX: Record<Action, Role[]> = {
   "org:manage": ["ADMIN"],
   "asset:manage": ["ADMIN", "ASSET_MANAGER"],
   "asset:allocate": ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD"],
   "transfer:approve": ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD"],
+  "return:approve": ["ADMIN", "ASSET_MANAGER"],
   "maintenance:approve": ["ADMIN", "ASSET_MANAGER"],
   "maintenance:raise": ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
   "booking:create": ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
   "transfer:request": ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
-  "audit:manage": ["ADMIN", "ASSET_MANAGER"],
-  "analytics:viewAll": ["ADMIN", "ASSET_MANAGER"],
+  "audit:manage": ["ADMIN"],
+  "analytics:viewAll": ["ADMIN"],
 };
 
 export function can(role: Role | undefined, action: Action): boolean {

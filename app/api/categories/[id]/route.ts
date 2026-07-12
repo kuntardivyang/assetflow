@@ -28,12 +28,22 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
 
     const { name, warrantyMonths } = parsed.data;
+    if (name) {
+      const dupe = await prisma.category.findFirst({
+        where: { name: { equals: name, mode: "insensitive" }, id: { not: id } },
+      });
+      if (dupe) {
+        return NextResponse.json({ error: "A category with this name already exists" }, { status: 409 });
+      }
+    }
     try {
       const category = await prisma.category.update({
         where: { id },
         data: {
           ...(name !== undefined && { name }),
           // undefined = leave as-is; null = clear the warranty field.
+          // NOTE: replaces extraFields wholesale — merge-on-read before
+          // adding a second key to this JSON column.
           ...(warrantyMonths !== undefined && {
             extraFields: warrantyMonths === null ? {} : { warrantyMonths },
           }),

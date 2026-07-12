@@ -20,12 +20,23 @@ const ASSET_STATUSES: AssetStatus[] = [
 
 // Screen 4 — Asset registrations and directory. Every filter hits the DB via
 // Prisma `where` (dynamic data, not client-side array filtering).
+// Repeated query keys arrive as arrays in Next 16 — collapse to first value
+// so ?q=a&q=b can't crash the page.
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
 export default async function AssetsPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [session, sp] = await Promise.all([auth(), searchParams]);
+  const [session, spRaw] = await Promise.all([auth(), searchParams]);
+  const sp = {
+    q: first(spRaw.q),
+    categoryId: first(spRaw.categoryId),
+    status: first(spRaw.status),
+    deptId: first(spRaw.deptId),
+    location: first(spRaw.location),
+  };
   const q = sp.q?.trim();
   const status = ASSET_STATUSES.includes(sp.status as AssetStatus)
     ? (sp.status as AssetStatus)

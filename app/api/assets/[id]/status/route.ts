@@ -44,10 +44,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       );
     }
 
-    const updated = await prisma.asset.update({
-      where: { id },
-      data: { status: parsed.data.status },
-    });
+    // Conditional write: only applies if status is still what the whitelist
+    // was checked against — a concurrent workflow transition makes this throw
+    // P2025 instead of being silently overwritten.
+    let updated;
+    try {
+      updated = await prisma.asset.update({
+        where: { id, status: asset.status },
+        data: { status: parsed.data.status },
+      });
+    } catch (e: unknown) {
+      if (typeof e === "object" && e !== null && "code" in e && e.code === "P2025") {
+        return NextResponse.json(
+          { error: "Asset changed while you were editing — refresh and try again" },
+          { status: 409 },
+        );
+      }
+      throw e;
+    }
     await logActivity({
       actorId: session.user.id,
       action: "asset.status",

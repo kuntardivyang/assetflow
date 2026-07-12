@@ -26,9 +26,21 @@ export function rateLimit(
   return { ok: true, retryAfterSec: 0 };
 }
 
-/** Best-effort client IP from proxy headers. */
+/**
+ * Client IP for rate-limit keys.
+ *
+ * `x-forwarded-for` is only trusted when the app is explicitly deployed behind a
+ * known proxy (`TRUST_PROXY=true`) — otherwise a client could spoof the header
+ * to mint a fresh bucket per request and defeat the throttle. A Next.js Request
+ * doesn't expose the raw socket address, so without a trusted proxy we fall back
+ * to a single shared bucket (safe: spoofing can't escape it).
+ */
 export function clientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
+  if (process.env.TRUST_PROXY === "true") {
+    const xff = req.headers.get("x-forwarded-for");
+    if (xff) return xff.split(",")[0]!.trim();
+    const real = req.headers.get("x-real-ip");
+    if (real) return real;
+  }
+  return "shared";
 }
